@@ -7,6 +7,8 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
+
+# استخدام اسم النموذج بالطريقة القياسية المضمونة
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
@@ -32,7 +34,6 @@ async def on_message(message):
             return
 
         try:
-            # دمج تعليمات الشخصية مباشرة بداخل النص حتى ما يصير أي خطأ برمجي
             full_prompt = (
                 "أنت مساعد ذكاء اصطناعي ذكي جداً، ودود، وتتكلم باللهجة العراقية الطبيعية والعفوية تماماً "
                 "(مثل كلام الشباب بأسلوب ذكي ومرتب وبدون تكلف أو مقدمات رسمية). "
@@ -48,9 +49,8 @@ async def on_message(message):
             await message.reply(reply_text if reply_text else "هلا بيك حبيبي، وياك!")
             
         except Exception as e:
-            # طباعة الخطأ الحقيقي بالكونسول حتى نعرفه إذا اكو شي
             print(f"API Error Details: {e}")
-            await message.reply(f"صار خطأ بالاتصال مع جيميناي: {e}")
+            await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاستجابة: {e}")
 
     await bot.process_commands(message)
 
