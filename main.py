@@ -38,7 +38,7 @@ async def on_message(message):
             # 1. فحص إذا السؤال عن الصانع أو المبرمج
             is_creator_question = any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"])
 
-            # 2. فحص إذا طلب صورة (مثل: سويلي صورة، ارسم، تصميم صورة)
+            # 2. فحص إذا طلب صورة
             is_image_request = any(word in lower_prompt for word in ["صورة", "صوره", "image", "pic", "ارسم", "تصميم صوره"])
 
             if is_creator_question:
@@ -46,26 +46,24 @@ async def on_message(message):
                 await message.reply(reply_text)
                 
             elif is_image_request:
-                # رسالة أولية بأن البوت جالس يصنع الصورة
                 status_msg = await message.reply("🎨 جاري إنشاء الصورة....")
                 
-                # نطلب من جيميناي يترجم الوصف ويسويه باللغة الإنجليزية (لأن موديلات الصور تفهم إنجليزي أفضل)
+                # ترجمة الوصف وتحسينه لإنجليزي للحصول على أفضل نتيجة صورة
                 img_prompt_gen = model.generate_content(f"Translate and refine this image prompt into a detailed, high-quality English image generation prompt, return ONLY the prompt text: {clean_prompt}")
                 image_prompt = img_prompt_gen.text.strip()
                 
-                # توليد رابط الصورة المباشر من API مجاني
+                # توليد رابط الصورة المباشر بدون علامة مائية
                 encoded_prompt = urllib.parse.quote(image_prompt)
                 image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
                 
-                # إرسال الصورة كـ Embed أو رابط مباشر للديسكورد
                 embed = discord.Embed(title="✨ تم إنشاء الصورة بنجاح", color=discord.Color.blurple())
                 embed.set_image(url=image_url)
-                embed.set_footer(text=f-requested by {message.author.name}")
+                embed.set_footer(text=f"Requested by {message.author.name}")
                 
                 await status_msg.edit(content=None, embed=embed)
                 
             else:
-                # 3. الرد العادي الذكي والمتكيف مع اللهجات واللغات
+                # 3. الرد العادي الذكي المتكيف مع اللهجات واللغات
                 prompt = (
                     "أنت ذكاء اصطناعي سريع وذكي جداً. رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً "
                     "(إذا إنجليزي رد إنجليزي، عراقي رد عراقي، وهكذا). "
