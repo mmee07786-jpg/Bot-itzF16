@@ -7,8 +7,6 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-# استخدام الموديل الجديد بالصيغة المقترحة من رسالة الخطأ
 model = genai.GenerativeModel("gemini-3.6-flash")
 
 intents = discord.Intents.default()
@@ -18,7 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت اشتغل وصار أونلاين: {bot.user.name}")
+    print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -30,22 +28,30 @@ async def on_message(message):
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيونى وياك، شكو ماكو؟")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
             return
 
         try:
-            prompt = f"أنت مساعد ذكي تتكلم باللهجة العراقية العفوية حصراً وبدون تكلف. أجب على هذا الكلام باختصار: {clean_prompt}"
-            response = model.generate_content(prompt)
+            # توجيه ذكي للسرعة والتكيف التام مع أي لغة أو لهجة
+            prompt = (
+                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
+                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
+                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                f"{clean_prompt}"
+            )
             
+            # توليد الرد فوراً بدون تأخير
+            response = model.generate_content(prompt)
             reply_text = response.text.strip()
+            
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text)
+            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
             
         except Exception as e:
             print(f"Error: {e}")
-            await message.reply(f"حبيبي صار خطأ بالاستجابة: {e}")
+            await message.reply("هلا بيك، وياك!")
 
     await bot.process_commands(message)
 
