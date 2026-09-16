@@ -1,10 +1,15 @@
 import os
 import discord
 from discord.ext import commands
-import requests
+import google.generativeai as genai
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+genai.configure(api_key=GEMINI_API_KEY)
+
+# النموذج الأصلي اللي جان يشتغل وياك
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -33,46 +38,23 @@ async def on_message(message):
         # تفعيل حالة "يكتب الآن..."
         async with message.channel.typing():
             
-            # 1. الرد عند السؤال عن الصانع
+            # الرد عند السؤال عن الصانع
             if any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"]):
                 await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
                 return
 
-            # 2. الرد الذكي المباشر باستخدام موديل gemini-2.0-flash والـ API المباشر
+            # الرد الذكي بالطريقة الأصلية
             try:
-                # استخدام أحدث موديل ورابط رسمي معتمد
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-                
-                headers = {'Content-Type': 'application/json'}
-                
-                system_instruction = "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة."
-                
-                payload = {
-                    "contents": [
-                        {
-                            "parts": [
-                                {"text": f"{system_instruction}\n\nالمستخدم: {clean_prompt}"}
-                            ]
-                        }
-                    ]
-                }
-                
-                res = requests.post(url, headers=headers, json=payload, timeout=10)
-                res_data = res.json()
-                
-                if res.status_code == 200:
-                    reply_text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
-                else:
-                    error_msg = res_data.get('error', {}).get('message', 'Unknown Error')
-                    print(f"❌ API Error: {error_msg}")
-                    reply_text = f"عذراً حبيبي، صار عندي خطأ بالطلب: `{error_msg[:60]}`"
+                chat_prompt = (
+                    "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة بناءً على كلام المستخدم: "
+                    f"{clean_prompt}"
+                )
+                response = model.generate_content(chat_prompt)
+                reply_text = response.text.strip() if response.text else "عيوني وياك، بس ما عرفت شجاوبك!"
                     
             except Exception as e:
-                print(f"❌ Request Exception: {e}")
-                reply_text = "عيوني وياك، صار عندي لود ثواني ورجعتلك!"
-
-            if not reply_text:
-                reply_text = "عيوني وياك حبيبي!"
+                print(f"❌ GEMINI API ERROR: {e}")
+                reply_text = f"عذراً حبيبي، صار عندي هذا الخطأ التقني: `{str(e)[:80]}`"
 
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
