@@ -2,13 +2,13 @@ import os
 import discord
 from discord.ext import commands
 import google.generativeai as genai
-import urllib.parse
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+# استخدام أحدث نموذج من جيميناي 3 للسرعة والدقة العالية
+model = genai.GenerativeModel("gemini-3.7-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -17,7 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال بنجاح على نظام Gemini 3: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -34,7 +34,7 @@ async def on_message(message):
 
         lower_prompt = clean_prompt.lower()
         
-        # تفعيل حالة "يكتب الآن..." فوراً حتى يشعر المستخدم أن البوت متفاعل
+        # تفعيل حالة "يكتب الآن..." في الديسكورد
         async with message.channel.typing():
             
             # 1. الرد عند السؤال عن الصانع
@@ -42,40 +42,21 @@ async def on_message(message):
                 await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
                 return
 
-            # 2. توليد الصور
-            if any(word in lower_prompt for word in ["صورة", "صوره", "image", "pic", "ارسم", "تصميم صوره"]):
-                try:
-                    img_res = model.generate_content(f"Translate and refine this into a short English image prompt: {clean_prompt}")
-                    image_prompt = img_res.text.strip()
-                except:
-                    image_prompt = clean_prompt
-
-                encoded_prompt = urllib.parse.quote(image_prompt)
-                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
-                
-                embed = discord.Embed(title="✨ تم إنشاء الصورة بنجاح", color=discord.Color.blurple())
-                embed.set_image(url=image_url)
-                embed.set_footer(text=f"Requested by {message.author.name}")
-                
-                await message.reply(embed=embed)
-                return
-
-            # 3. الرد الذكي المتكيف
+            # 2. الرد الذكي المباشر باستخدام جيميناي 3
             try:
-                system_instruction = (
-                    "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك المطلقة: "
-                    "رد دائماً بنفس لغة أو لهجة المستخدم تماماً (عراقي، مصري، خليجي، شامي، إنجليزي، إلخ). "
-                    "أجب مباشرة وبدون مقدمات معقدة."
+                chat_prompt = (
+                    "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة بناءً على كلام المستخدم: "
+                    f"{clean_prompt}"
                 )
-                full_prompt = f"{system_instruction}\nالمستخدم يقول: {clean_prompt}"
-                
-                response = model.generate_content(full_prompt)
+                response = model.generate_content(chat_prompt)
                 reply_text = response.text.strip()
-            except:
-                reply_text = "عيوني وياك حبيبي، صار عندي لود ثواني ورجعتلك!"
-
-            if not reply_text:
-                reply_text = "عيوني وياك حبيبي!"
+                
+                if not reply_text:
+                    reply_text = "عيوني وياك، بس ما عرفت شجاوبك!"
+                    
+            except Exception as e:
+                print(f"❌ GEMINI API ERROR: {e}")
+                reply_text = "صار عندي لود ثواني ورجعتلك، عيوني لك! شتحب تسأل بعد؟"
 
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
