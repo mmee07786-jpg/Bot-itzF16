@@ -8,8 +8,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# استخدام اسم النموذج بالطريقة القياسية المضمونة
-model = genai.GenerativeModel("gemini-1.5-flash")
+# استخدام الصيغة الكاملة والمدعومة رسمياً للموديل الحديث
+model = genai.GenerativeModel("models/gemini-2.5-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -50,7 +50,13 @@ async def on_message(message):
             
         except Exception as e:
             print(f"API Error Details: {e}")
-            await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاستجابة: {e}")
+            # محاولة أخيرة بديلة سريعة لو صار أي شي
+            try:
+                fallback_model = genai.GenerativeModel("models/gemini-1.5-flash")
+                res = fallback_model.generate_content(clean_prompt)
+                await message.reply(res.text.strip())
+            except Exception as err:
+                await message.reply(f"حبيبي صار خطأ بالاتصال: {err}")
 
     await bot.process_commands(message)
 
