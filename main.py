@@ -7,8 +7,8 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# استخدام النموذج الرسمي المضمون والسريع
-model = genai.GenerativeModel("gemini-1.5-flash")
+# استخدام نموذج موثوق ومستقر
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -55,7 +55,6 @@ async def on_message(message):
                     reply_text = "عيوني وياك، بس ما عرفت شجاوبك!"
                     
             except Exception as e:
-                # طباعة الخطأ الحقيقي بالكونسول للتشخيص
                 print(f"❌ GEMINI API ERROR: {e}")
                 reply_text = f"عذراً حبيبي، صار عندي هذا الخطأ التقني: `{str(e)[:80]}`"
 
