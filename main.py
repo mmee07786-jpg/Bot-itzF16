@@ -17,7 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت توليد الصور والنصوص شغال: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -36,23 +36,21 @@ async def on_message(message):
             lower_prompt = clean_prompt.lower()
             
             # 1. فحص إذا السؤال عن الصانع أو المبرمج
-            is_creator_question = any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"])
+            if any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"]):
+                await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
+                return
 
             # 2. فحص إذا طلب صورة
-            is_image_request = any(word in lower_prompt for word in ["صورة", "صوره", "image", "pic", "ارسم", "تصميم صوره"])
-
-            if is_creator_question:
-                reply_text = "اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎"
-                await message.reply(reply_text)
-                
-            elif is_image_request:
+            if any(word in lower_prompt for word in ["صورة", "صوره", "image", "pic", "ارسم", "تصميم صوره"]):
                 status_msg = await message.reply("🎨 جاري إنشاء الصورة....")
                 
-                # ترجمة الوصف وتحسينه لإنجليزي للحصول على أفضل نتيجة صورة
-                img_prompt_gen = model.generate_content(f"Translate and refine this image prompt into a detailed, high-quality English image generation prompt, return ONLY the prompt text: {clean_prompt}")
-                image_prompt = img_prompt_gen.text.strip()
-                
-                # توليد رابط الصورة المباشر بدون علامة مائية
+                # استخدام الوصف مباشرة أو توليد وصف إنجليزي بطريقة آمنة
+                try:
+                    img_prompt_gen = model.generate_content(f"Translate and refine this image prompt into English, return ONLY the prompt: {clean_prompt}")
+                    image_prompt = img_prompt_gen.text.strip()
+                except:
+                    image_prompt = clean_prompt
+
                 encoded_prompt = urllib.parse.quote(image_prompt)
                 image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
                 
@@ -61,29 +59,30 @@ async def on_message(message):
                 embed.set_footer(text=f"Requested by {message.author.name}")
                 
                 await status_msg.edit(content=None, embed=embed)
-                
-            else:
-                # 3. الرد العادي الذكي المتكيف مع اللهجات واللغات
-                prompt = (
-                    "أنت ذكاء اصطناعي سريع وذكي جداً. رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً "
-                    "(إذا إنجليزي رد إنجليزي، عراقي رد عراقي، وهكذا). "
-                    f"أجب على هذا الكلام باختصار وبدون مقدمات معقدة: {clean_prompt}"
-                )
-                
-                response = model.generate_content(prompt)
-                reply_text = response.text.strip()
+                return
 
-                if not reply_text:
-                    reply_text = "عيوني وياك!"
+            # 3. الرد العادي الذكي والمتكيف مع اللهجات
+            prompt = (
+                "أنت ذكاء اصطناعي سريع وذكي جداً. رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً "
+                "(إذا إنجليزي رد إنجليزي، عراقي رد عراقي، وهكذا). "
+                f"أجب باختصار وبدون مقدمات: {clean_prompt}"
+            )
+            
+            response = model.generate_content(prompt)
+            reply_text = response.text.strip()
 
-                if len(reply_text) > 2000:
-                    reply_text = reply_text[:1997] + "..."
+            if not reply_text:
+                reply_text = "عيوني وياك حبيبي!"
 
-                await message.reply(reply_text)
+            if len(reply_text) > 2000:
+                reply_text = reply_text[:1997] + "..."
+
+            await message.reply(reply_text)
                 
         except Exception as e:
             print(f"Error Details: {e}")
-            await message.reply("ها حبيبي، صار لود بسيط وراجعلك!")
+            # رد مباشر بالنص اللي سأله المستخدم إذا صار أي استثناء حتى ما يصفن البوت
+            await message.reply(f"عيوني سمعتك: {clean_prompt}، بس صار عندي لود ثواني وجاوبتك!")
 
     await bot.process_commands(message)
 
