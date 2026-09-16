@@ -8,8 +8,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# استخدام الموديل الحديث المتوافق حصراً مع المفاتيح الجديدة
-model = genai.GenerativeModel("gemini-2.5-flash")
+# استخدام الموديل الجديد بالصيغة المقترحة من رسالة الخطأ
+model = genai.GenerativeModel("gemini-3.6-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
