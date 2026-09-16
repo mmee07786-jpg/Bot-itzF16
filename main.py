@@ -6,11 +6,11 @@ import google.generativeai as genai
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# تهيئة المفتاح بالطريقة القياسية
+# إعداد مفتاح جوجل بالصيغة الحديثة
 genai.configure(api_key=GEMINI_API_KEY)
 
-# استخدام اسم الموديل الصريح والمباشر
-model = genai.GenerativeModel('gemini-1.5-flash')
+# تحديث اسم الموديل إلى الإصدار الأحدث والمتوافق مع المفاتيح الجديدة
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -19,7 +19,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"✅ | البوت شغال وجاهز: {bot.user.name}")
+    print(f"🚀 | البوت اشتغل وصار أونلاين: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -35,7 +35,7 @@ async def on_message(message):
             return
 
         try:
-            # إرسال النص مباشرة إلى جيميناي مع طلب اللهجة العراقية
+            # إرسال الرسالة مع طلب اللهجة العراقية العفوية
             prompt = f"أنت مساعد ذكي تتكلم باللهجة العراقية العفوية حصراً وبدون تكلف. أجب على هذا الكلام باختصار: {clean_prompt}"
             response = model.generate_content(prompt)
             
