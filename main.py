@@ -27,7 +27,6 @@ async def on_message(message):
 
     # الرد فقط عند المنشن
     if bot.user.mentioned_in(message) and not message.mention_everyone:
-        # إخراج النص المكتوب بدون المنشن
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
@@ -35,7 +34,7 @@ async def on_message(message):
             return
 
         try:
-            # إرسال الرسالة لجوجل جيميني واستلام الجواب فوراً باللهجة العراقية
+            # الرد السريع باللهجة العراقية
             response = model.generate_content(f"أنت مساعد ذكي تتكلم باللهجة العراقية فقط وبدون تكلف. أجب على هذا الكلام: {clean_prompt}")
             reply_text = response.text.strip()
             
@@ -45,24 +44,14 @@ async def on_message(message):
             await message.reply(reply_text)
             
         except Exception as e:
-            # طباعة الخطأ بالكونسول لتعرفه، وإرسال رد بسيط للمستخدم
             print(f"Error: {e}")
-            await model_fallback_reply(message, clean_prompt)
+            await message.reply("عذراً، صار عندي ضغط بالاتصال، جرب تمنشن مرة ثانية.")
 
     await bot.process_commands(message)
-
-async def model_fallback_reply(message, text):
-    try:
-        # محاولة ثانية سريعة جداً في حال حصل ضغط
-        fallback_model = genai.GenerativeModel("gemini-1.5-flash")
-        res = fallback_model.generate_content(text)
-        await message.reply(res.text.strip())
-    except:
-        await message.reply("عذرأً حبيبي، تأكد من صحة مفتاح الـ API الخاص بـ Gemini في إعدادات الاستضافة (Variables).")
 
 if __name__ == "__main__":
     while True:
         try:
             bot.run(DISCORD_TOKEN)
         except Exception as e:
-            print(fRestarting... {e})
+            print(f"Restarting... {e}")
