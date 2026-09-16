@@ -1,13 +1,10 @@
 import os
 import discord
 from discord.ext import commands
-from google import genai
+import requests
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-# إعداد العميل بالمكتبة الحديثة
-client = genai.Client(api_key=GEMINI_API_KEY)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -41,20 +38,40 @@ async def on_message(message):
                 await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
                 return
 
-            # 2. الرد الذكي والنصي فقط باستخدام المكتبة الحديثة
+            # 2. الرد الذكي المباشر باستخدام الـ API المباشر (بدون أخطاء نماذج ومكتبات)
             try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                
+                headers = {'Content-Type': 'application/json'}
+                
                 system_instruction = "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة."
                 
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=f"{system_instruction}\n\nالمستخدم: {clean_prompt}"
-                )
+                payload = {
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": f"{system_instruction}\n\nالمستخدم: {clean_prompt}"}
+                            ]
+                        }
+                    ]
+                }
                 
-                reply_text = response.text.strip() if response.text else "عيوني وياك، بس ما عرفت شجاوبك!"
+                res = requests.post(url, headers=headers, json=payload, timeout=10)
+                res_data = res.json()
+                
+                if res.status_code == 200:
+                    reply_text = res_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                else:
+                    error_msg = res_data.get('error', {}).get('message', 'Unknown Error')
+                    print(f"❌ API Error: {error_msg}")
+                    reply_text = f"عذراً حبيبي، صار عندي خطأ بالطلب: `{error_msg[:60]}`"
                     
             except Exception as e:
-                print(f"❌ GEMINI API ERROR: {e}")
-                reply_text = f"عذراً حبيبي، صار عندي هذا الخطأ التقني: `{str(e)[:80]}`"
+                print(f"❌ Request Exception: {e}")
+                reply_text = "عيوني وياك، صار عندي لود ثواني ورجعتلك!"
+
+            if not reply_text:
+                reply_text = "عيوني وياك حبيبي!"
 
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
