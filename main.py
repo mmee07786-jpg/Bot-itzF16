@@ -8,8 +8,20 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# استخدام النموذج المعتمد والمستقر للدردشة والنصوص فقط
-model = genai.GenerativeModel("gemini-1.5-flash")
+# دالة ذكية لاختيار نموذج نصوص شغال تلقائياً بدون أخطاء
+def get_working_model():
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods and ('flash' in m.name.lower() or 'pro' in m.name.lower()):
+                print(f"✅ تم اختيار النموذج بنجاح: {m.name}")
+                return genai.GenerativeModel(m.name)
+    except Exception as e:
+        print(f"⚠️ خطأ أثناء جلب النموذج تلقائياً: {e}")
+    
+    # نموذج احتياطي مضمون للنصوص
+    return genai.GenerativeModel("gemini-2.5-flash")
+
+model = get_working_model()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +30,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 للنصوص فقط شغال وبأفضل حالة: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
