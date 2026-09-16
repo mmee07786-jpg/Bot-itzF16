@@ -1,13 +1,15 @@
 import os
 import discord
 from discord.ext import commands
-from google import genai
+import google.generativeai as genai
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# إعداد العميل بالطريقة الرسمية الجديدة
-client = genai.Client(api_key=GEMINI_API_KEY)
+genai.configure(api_key=GEMINI_API_KEY)
+
+# استخدام اسم النموذج بدون أي إضافات معقدة
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -23,7 +25,6 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # التفاعل عند المنشن فقط
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
@@ -33,24 +34,22 @@ async def on_message(message):
 
         lower_prompt = clean_prompt.lower()
         
-        # تفعيل حالة "يكتب الآن..."
         async with message.channel.typing():
             
-            # 1. الرد عند السؤال عن الصانع
             if any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"]):
                 await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
                 return
 
-            # 2. الرد الذكي والنصي فقط باستخدام المكتبة الحديثة
             try:
-                system_instruction = "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة."
-                
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=f"{system_instruction}\n\nالمستخدم: {clean_prompt}"
+                chat_prompt = (
+                    "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة بناءً على كلام المستخدم: "
+                    f"{clean_prompt}"
                 )
+                response = model.generate_content(chat_prompt)
+                reply_text = response.text.strip()
                 
-                reply_text = response.text.strip() if response.text else "عيوني وياك، بس ما عرفت شجاوبك!"
+                if not reply_text:
+                    reply_text = "عيوني وياك، بس ما عرفت شجاوبك!"
                     
             except Exception as e:
                 print(f"❌ GEMINI API ERROR: {e}")
