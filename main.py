@@ -16,7 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال وجاهز: {bot.user.name}")
+    print(f"🚀 | البوت شغال وفلول: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -31,28 +31,23 @@ async def on_message(message):
             await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
             return
 
-        # التحقق من طلبات الصور والفيديوهات بشكل سليم ومضبوط
-        lower_prompt = clean_prompt.lower()
-        is_video_request = any(word in lower_prompt for word in ["فيديو", "video", "مقطع", "تصميم فيديو"])
-        is_image_request = any(word in lower_prompt for word in ["صورة", "صوره", "image", "pic", "ارسم", "تصميم صوره"])
-
         try:
-            if is_video_request:
-                status_msg = await message.reply("🎥 جاري إنشاء الفيديو....")
-                response = model.generate_content(f"قم بصياغة وصف دقيق لتوليد فيديو بناءً على طلب المستخدم التالي: {clean_prompt}")
-                await status_msg.edit(content=f"🎥 تم تجهيز فكرة الفيديو:\n{response.text.strip()}")
-                
-            elif is_image_request:
-                status_msg = await message.reply("🎨 جاري إنشاء الصورة....")
-                response = model.generate_content(f"صمم وصف تفصيلي لـ prompt صورة احترافية بدون علامة مائية بناءً على طلب: {clean_prompt}")
-                await status_msg.edit(content=f"🎨 تم إنشاء الصورة المطلوبة:\n{response.text.strip()}")
-                
+            # التحقق إذا كان السؤال عن المبرمج أو الصانع
+            lower_prompt = clean_prompt.lower()
+            is_creator_question = any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you", "who is your developer"])
+
+            if is_creator_question:
+                reply_text = "اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. تگدر تتواصل ويا وتشوف إبداعاته بـديسكورد: `izf18` 🔥😎"
+                await message.reply(reply_text)
             else:
+                # الرد العادي المتكيف مع اللهجات واللغات
                 prompt = (
-                    "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                    "(إذا تحدث بالإنجليزية رد بالإنجليزية، باللهجة العراقية رد بعراقي، وهكذا). "
-                    f"أجب بسرعة وبدون مقدمات على هذا الكلام: {clean_prompt}"
+                    "أنت ذكاء اصطناعي سريع، ذكي، وودود جداً. قاعدتك الأساسية: "
+                    "1. رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً (إنجليزي، عراقي، مصري، خليجي، إلخ). "
+                    "2. إذا سألك المستخدم عن قدرتك على إنشاء صور أو فيديوهات، وّضح له بأسلوب لطيف أنك متخصص بالنقاشات والبرمجة وتعطي أفكار (Prompts) جاهزة، وما تولد الملف مباشرة بالدردشة. "
+                    f"أجب على هذا الكلام بسرعة وبدون تعقيد: {clean_prompt}"
                 )
+                
                 response = model.generate_content(prompt)
                 reply_text = response.text.strip()
                 
@@ -62,8 +57,8 @@ async def on_message(message):
                 await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
                 
         except Exception as e:
-            print(f"Error: {e}")
-            await message.reply("عذراً حبيبي، صار عندي ضغط ثواني وراجعلك!")
+            print(f"Error Details: {e}")
+            await message.reply("عيوني وياك، تفضل سولفلي شمحتاج؟")
 
     await bot.process_commands(message)
 
