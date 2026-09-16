@@ -38,9 +38,10 @@ async def on_message(message):
                 await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
                 return
 
-            # 2. الرد الذكي المباشر باستخدام إصدار v1 المستقر
+            # 2. الرد الذكي المباشر باستخدام موديل gemini-2.0-flash والـ API المباشر
             try:
-                url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+                # استخدام أحدث موديل ورابط رسمي معتمد
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
                 
                 headers = {'Content-Type': 'application/json'}
                 
