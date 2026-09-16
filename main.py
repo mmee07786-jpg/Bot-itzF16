@@ -2,6 +2,7 @@ import os
 import discord
 from discord.ext import commands
 import google.generativeai as genai
+import urllib.parse
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -16,7 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال وفلول: {bot.user.name}")
+    print(f"🚀 | بوت توليد الصور والنصوص شغال: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -28,37 +29,63 @@ async def on_message(message):
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
             return
 
         try:
-            # التحقق إذا كان السؤال عن المبرمج أو الصانع
             lower_prompt = clean_prompt.lower()
-            is_creator_question = any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you", "who is your developer"])
+            
+            # 1. فحص إذا السؤال عن الصانع أو المبرمج
+            is_creator_question = any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"])
+
+            # 2. فحص إذا طلب صورة (مثل: سويلي صورة، ارسم، تصميم صورة)
+            is_image_request = any(word in lower_prompt for word in ["صورة", "صوره", "image", "pic", "ارسم", "تصميم صوره"])
 
             if is_creator_question:
-                reply_text = "اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. تگدر تتواصل ويا وتشوف إبداعاته بـديسكورد: `izf18` 🔥😎"
+                reply_text = "اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎"
                 await message.reply(reply_text)
+                
+            elif is_image_request:
+                # رسالة أولية بأن البوت جالس يصنع الصورة
+                status_msg = await message.reply("🎨 جاري إنشاء الصورة....")
+                
+                # نطلب من جيميناي يترجم الوصف ويسويه باللغة الإنجليزية (لأن موديلات الصور تفهم إنجليزي أفضل)
+                img_prompt_gen = model.generate_content(f"Translate and refine this image prompt into a detailed, high-quality English image generation prompt, return ONLY the prompt text: {clean_prompt}")
+                image_prompt = img_prompt_gen.text.strip()
+                
+                # توليد رابط الصورة المباشر من API مجاني
+                encoded_prompt = urllib.parse.quote(image_prompt)
+                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
+                
+                # إرسال الصورة كـ Embed أو رابط مباشر للديسكورد
+                embed = discord.Embed(title="✨ تم إنشاء الصورة بنجاح", color=discord.Color.blurple())
+                embed.set_image(url=image_url)
+                embed.set_footer(text=f-requested by {message.author.name}")
+                
+                await status_msg.edit(content=None, embed=embed)
+                
             else:
-                # الرد العادي المتكيف مع اللهجات واللغات
+                # 3. الرد العادي الذكي والمتكيف مع اللهجات واللغات
                 prompt = (
-                    "أنت ذكاء اصطناعي سريع، ذكي، وودود جداً. قاعدتك الأساسية: "
-                    "1. رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً (إنجليزي، عراقي، مصري، خليجي، إلخ). "
-                    "2. إذا سألك المستخدم عن قدرتك على إنشاء صور أو فيديوهات، وّضح له بأسلوب لطيف أنك متخصص بالنقاشات والبرمجة وتعطي أفكار (Prompts) جاهزة، وما تولد الملف مباشرة بالدردشة. "
-                    f"أجب على هذا الكلام بسرعة وبدون تعقيد: {clean_prompt}"
+                    "أنت ذكاء اصطناعي سريع وذكي جداً. رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً "
+                    "(إذا إنجليزي رد إنجليزي، عراقي رد عراقي، وهكذا). "
+                    f"أجب على هذا الكلام باختصار وبدون مقدمات معقدة: {clean_prompt}"
                 )
                 
                 response = model.generate_content(prompt)
                 reply_text = response.text.strip()
-                
+
+                if not reply_text:
+                    reply_text = "عيوني وياك!"
+
                 if len(reply_text) > 2000:
                     reply_text = reply_text[:1997] + "..."
 
-                await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+                await message.reply(reply_text)
                 
         except Exception as e:
             print(f"Error Details: {e}")
-            await message.reply("عيوني وياك، تفضل سولفلي شمحتاج؟")
+            await message.reply("ها حبيبي، صار لود بسيط وراجعلك!")
 
     await bot.process_commands(message)
 
