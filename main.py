@@ -6,10 +6,11 @@ import google.generativeai as genai
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# تهيئة المفتاح بالطريقة القياسية
 genai.configure(api_key=GEMINI_API_KEY)
 
-# استخدام الصيغة الكاملة والمدعومة رسمياً للموديل الحديث
-model = genai.GenerativeModel("models/gemini-2.5-flash")
+# استخدام اسم الموديل الصريح والمباشر
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +19,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"البوت اشتغل وصار أونلاين: {bot.user.name}")
+    print(f"✅ | البوت شغال وجاهز: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -34,29 +35,19 @@ async def on_message(message):
             return
 
         try:
-            full_prompt = (
-                "أنت مساعد ذكاء اصطناعي ذكي جداً، ودود، وتتكلم باللهجة العراقية الطبيعية والعفوية تماماً "
-                "(مثل كلام الشباب بأسلوب ذكي ومرتب وبدون تكلف أو مقدمات رسمية). "
-                f"أجب على هذا الكلام بذكاء: {clean_prompt}"
-            )
+            # إرسال النص مباشرة إلى جيميناي مع طلب اللهجة العراقية
+            prompt = f"أنت مساعد ذكي تتكلم باللهجة العراقية العفوية حصراً وبدون تكلف. أجب على هذا الكلام باختصار: {clean_prompt}"
+            response = model.generate_content(prompt)
             
-            response = model.generate_content(full_prompt)
             reply_text = response.text.strip()
-            
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text if reply_text else "هلا بيك حبيبي، وياك!")
+            await message.reply(reply_text)
             
         except Exception as e:
-            print(f"API Error Details: {e}")
-            # محاولة أخيرة بديلة سريعة لو صار أي شي
-            try:
-                fallback_model = genai.GenerativeModel("models/gemini-1.5-flash")
-                res = fallback_model.generate_content(clean_prompt)
-                await message.reply(res.text.strip())
-            except Exception as err:
-                await message.reply(f"حبيبي صار خطأ بالاتصال: {err}")
+            print(f"Error: {e}")
+            await message.reply(f"حبيبي صار خطأ بالاستجابة: {e}")
 
     await bot.process_commands(message)
 
