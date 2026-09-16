@@ -7,8 +7,9 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# استخدام نموذج موثوق ومستقر
-model = genai.GenerativeModel("gemini-2.0-flash")
+
+# استخدام النموذج المعتمد والمستقر للدردشة والنصوص فقط
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -17,7 +18,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
+    print(f"🚀 | بوت izf18 للنصوص فقط شغال وبأفضل حالة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -42,7 +43,7 @@ async def on_message(message):
                 await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
                 return
 
-            # 2. الرد الذكي المباشر
+            # 2. الرد الذكي والنصي فقط
             try:
                 chat_prompt = (
                     "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة بناءً على كلام المستخدم: "
