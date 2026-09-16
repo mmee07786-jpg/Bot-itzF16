@@ -7,11 +7,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# استخدام إعدادات ذكية تخلي الردود سريعة ومتكيفّة
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction="أنت مساعد ذكاء اصطناعي ذكي، ودود، وتتكلم باللهجة العراقية الطبيعية والعفوية تماماً (مثل كلام الشباب بأسلوب ذكي ومرتب). ردودك تكون سريعة، مباشرة، وبدون تكلف أو مقدمات رسمية مملة."
-)
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -36,8 +32,14 @@ async def on_message(message):
             return
 
         try:
-            # إرسال الرسالة مع الحفاظ على سرعة الاستجابة القصوى
-            response = model.generate_content(clean_prompt)
+            # دمج تعليمات الشخصية مباشرة بداخل النص حتى ما يصير أي خطأ برمجي
+            full_prompt = (
+                "أنت مساعد ذكاء اصطناعي ذكي جداً، ودود، وتتكلم باللهجة العراقية الطبيعية والعفوية تماماً "
+                "(مثل كلام الشباب بأسلوب ذكي ومرتب وبدون تكلف أو مقدمات رسمية). "
+                f"أجب على هذا الكلام بذكاء: {clean_prompt}"
+            )
+            
+            response = model.generate_content(full_prompt)
             reply_text = response.text.strip()
             
             if len(reply_text) > 2000:
@@ -46,8 +48,9 @@ async def on_message(message):
             await message.reply(reply_text if reply_text else "هلا بيك حبيبي، وياك!")
             
         except Exception as e:
-            print(f"Error: {e}")
-            await message.reply("هلا بيك، وياك! تفضل حجي.")
+            # طباعة الخطأ الحقيقي بالكونسول حتى نعرفه إذا اكو شي
+            print(f"API Error Details: {e}")
+            await message.reply(f"صار خطأ بالاتصال مع جيميناي: {e}")
 
     await bot.process_commands(message)
 
