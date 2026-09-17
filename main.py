@@ -12,11 +12,11 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # تهيئة العميل بالطريقة الرسمية الحديثة
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# أحدث الموديلات المدعومة بالترتيب
+# أحدث الموديلات الراقية بالترتيب (مع 3.8 في المقدمة)
 MODELS_FALLBACK = [
+    "gemini-3.8-flash",
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
+    "gemini-2.0-flash"
 ]
 
 intents = discord.Intents.default()
@@ -26,7 +26,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت اشتغل بدون أخطاء وبأحدث حزمة جيميناي: {bot.user.name}")
+    print(f"🚀 | البوت شغال بأروع موديلات جيميناي (مع 3.8): {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -50,7 +50,7 @@ async def on_message(message):
                         print(f"⚠️ خطأ في قراءة الصورة: {img_err}")
 
         if not clean_prompt and not image_part:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
+            await message.reply("هلا بيك فهد! عيوني وياك، شكو ماكو؟")
             return
 
         # التوجيه الطبيعي (بدون ذكر اسمك إلا عند السؤال المباشر)
@@ -74,7 +74,7 @@ async def on_message(message):
         reply_text = None
         success = False
 
-        # تجربة الموديلات بالترتيب باستخدام العميل الجديد
+        # تجربة الموديلات بالترتيب بدءاً من 3.8
         for model_name in MODELS_FALLBACK:
             try:
                 response = client.models.generate_content(
@@ -97,7 +97,7 @@ async def on_message(message):
                 reply_text = reply_text[:1997] + "..."
             await message.reply(reply_text)
         else:
-            await message.reply("صار ضغط خفيف أو الصورة ما انفتحتي عدل، جرب دزها مرة ثانية!")
+            await message.reply("عيوني فهد، صار ضغط خفيف أو الصورة ما انفتحتي عدل، جرب دزها مرة ثانية!")
 
     await bot.process_commands(message)
 
