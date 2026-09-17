@@ -7,8 +7,8 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# استعملنا الاسم الصحيح والمستقر للموديل
-model = genai.GenerativeModel("gemini-1.5-flash")
+# استخدام اسم الموديل المدعوم والمستقر حالياً
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -32,7 +32,6 @@ async def on_message(message):
             await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
             return
 
-        # إضافة حالة الكتابة حتى البوت يبين وكأنه ديجاوب بفعالية
         async with message.channel.typing():
             try:
                 prompt = (
@@ -51,7 +50,6 @@ async def on_message(message):
                 await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
                 
             except Exception as e:
-                # حتى يطبعلك الخطأ الحقيقي بالكونسول ويبين السبب اذا اكو مشكلة ثانية
                 print(f"Gemini API Error Detail: {e}")
                 await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاتصال: `{str(e)[:50]}`")
 
