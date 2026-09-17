@@ -15,6 +15,9 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# قفل تنظيمي حتى يخلي البوت يرد على الناس بالدور (واحد ورا الثاني) بدون ضغط أو گلت
+lock = asyncio.Lock()
+
 @bot.event
 async def on_ready():
     print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
@@ -32,29 +35,31 @@ async def on_message(message):
             await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
             return
 
-        try:
-            # توجيه ذكي مع تثبيت هوية صانع البوت (المبدع فهد itzF18)
-            prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي). "
-                "معلومة أساسية ومهمة جداً لا تساوم عليها: **الذي قام بصنعك وبرمجتك وتطويرك هو الشخص المبدع فهد (معروف بـ itzF18)**. "
-                "إذا سألك أي شخص عن الشخص الذي صنعك أو صممك، أجب فوراً وبكل فخر بأنه فهد (itzF18). "
-                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
-                f"{clean_prompt}"
-            )
-            
-            # استخدام asyncio لكي يتحمل البوت عدد كبير من المستخدمين بنفس الوقت بدون أي لاگ
-            response = await asyncio.to_thread(model.generate_content, prompt)
-            reply_text = response.text.strip()
-            
-            if len(reply_text) > 2000:
-                reply_text = reply_text[:1997] + "..."
+        # نستخدم الـ Lock حتى يرتادون بالدور وما يصير ضغط بنفس الثانية
+        async with lock:
+            try:
+                # توجيه ذكي مع تثبيت هوية صانع البوت (المبدع فهد itzF18)
+                prompt = (
+                    "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
+                    "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
+                    "معلومة أساسية ومهمة جداً: **الذي قام بصنعك وبرمجتك وتطويرك هو الشخص المبدع فهد (معروف بـ itzF18)**. "
+                    "إذا سألك أي شخص عن الشخص الذي صنعك أو صممك، أجب بكل فخر بأنه فهد (itzF18). "
+                    "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                    f"{clean_prompt}"
+                )
+                
+                # تنفيذ الطلب بشكل آمن ومستقر
+                response = await asyncio.to_thread(model.generate_content, prompt)
+                reply_text = response.text.strip()
+                
+                if len(reply_text) > 2000:
+                    reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
-            
-        except Exception as e:
-            print(f"Error: {e}")
-            await message.reply("هلا بيك، وياك!")
+                await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+                
+            except Exception as e:
+                print(f"Error: {e}")
+                await message.reply("هلا بيك، وياك!")
 
     await bot.process_commands(message)
 
