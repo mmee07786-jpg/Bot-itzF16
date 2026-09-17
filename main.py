@@ -1,15 +1,14 @@
 import os
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-genai.configure(api_key=GEMINI_API_KEY)
-
-# استخدام الموديل المستقر 1.5-flash بشكل مباشر وصريح بدون أي دالة بحث
-model = genai.GenerativeModel('gemini-1.5-flash')
+# تهيئة العميل بالطريقة الحديثة الرسمية
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال وبأفضل شكل: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال بالمكتبة الحديثة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -30,29 +29,36 @@ async def on_message(message):
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
             return
 
         async with message.channel.typing():
             try:
-                prompt = (
+                system_instruction = (
                     "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
                     "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
-                    "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
-                    f"{clean_prompt}"
+                    "أجب بسرعة وبدون مقدمات معقدة."
                 )
                 
-                response = model.generate_content(prompt)
+                # استخدام الطريقة الحديثة بالطلب مع نموذج gemini-2.5-flash
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=clean_prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                    )
+                )
+                
                 reply_text = response.text.strip()
                 
                 if len(reply_text) > 2000:
                     reply_text = reply_text[:1997] + "..."
 
-                await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+                await message.reply(reply_text if reply_text else "عيوني وياك!")
                 
             except Exception as e:
-                print(f"Gemini API Error Detail: {e}")
-                await message.reply(f"عذراً حبيبي، صار عندي خطأ: `{str(e)[:50]}`")
+                print(f"New GenAI Error: {e}")
+                await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاتصال: `{str(e)[:50]}`")
 
     await bot.process_commands(message)
 
