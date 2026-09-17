@@ -7,9 +7,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-# النموذج الأصلي اللي جان يشتغل وياك
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel("gemini-3.6-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
+    print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -30,36 +28,30 @@ async def on_message(message):
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
             return
 
-        lower_prompt = clean_prompt.lower()
-        
-        # تفعيل حالة "يكتب الآن..."
-        async with message.channel.typing():
+        try:
+            # توجيه ذكي للسرعة والتكيف التام مع أي لغة أو لهجة
+            prompt = (
+                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
+                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
+                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                f"{clean_prompt}"
+            )
             
-            # الرد عند السؤال عن الصانع
-            if any(word in lower_prompt for word in ["منو صنعك", "من صمك", "من برمجك", "صانعك", "مبرمجك", "منو سوك", "who made you", "who created you"]):
-                await message.reply("اني صنعني وظهرني لهلصناعة العبقرية المبدع الكبير وتاج الراس **izf18**! هو اللي برمجني وتعب عليه حتى أكون بهذا الذكاء والسرعة. 🔥😎")
-                return
-
-            # الرد الذكي بالطريقة الأصلية
-            try:
-                chat_prompt = (
-                    "أنت مساعد ذكي ولطيف. رد باللهجة العراقية الطبيعية وبشكل مباشر وبدون مقدمات معقدة بناءً على كلام المستخدم: "
-                    f"{clean_prompt}"
-                )
-                response = model.generate_content(chat_prompt)
-                reply_text = response.text.strip() if response.text else "عيوني وياك، بس ما عرفت شجاوبك!"
-                    
-            except Exception as e:
-                print(f"❌ GEMINI API ERROR: {e}")
-                reply_text = f"عذراً حبيبي، صار عندي هذا الخطأ التقني: `{str(e)[:80]}`"
-
+            # توليد الرد فوراً بدون تأخير
+            response = model.generate_content(prompt)
+            reply_text = response.text.strip()
+            
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text)
+            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+            
+        except Exception as e:
+            print(f"Error: {e}")
+            await message.reply("هلا بيك، وياك!")
 
     await bot.process_commands(message)
 
