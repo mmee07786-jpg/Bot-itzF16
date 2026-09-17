@@ -4,12 +4,9 @@ from discord.ext import commands
 import google.generativeai as genai
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-# يقرأ مفتاح جيميناي الجديد
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-
-# استخدام موديل جيميناي السريع والمستقر
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
@@ -19,14 +16,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت رجع لجيميناي وشغال وبأفضل حال: {bot.user.name}")
+    print(f"🚀 | البوت شغال ويسجل أخطاء جيميناي: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    # التفاعل عند المنشن فقط
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
@@ -35,7 +31,6 @@ async def on_message(message):
             return
 
         try:
-            # توجيه ذكي وسريع باللهجة العراقية وتثبيت هوية الصانع فهد itzF18
             prompt = (
                 "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
                 "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
@@ -58,8 +53,9 @@ async def on_message(message):
             await message.reply(reply_text)
             
         except Exception as e:
-            print(f"Error Details: {e}")
-            await message.reply("عيوني وياك، صار ضغط خفيف، احاجيني مرة ثانية بتركيز!")
+            print(f"❌ GEMINI ERROR: {e}")
+            # راح يطبع الخطأ الحقيقي بالشات حتى نشوفه فوراً
+            await message.reply(f"خطأ جيميناي التقني: `{e}`")
 
     await bot.process_commands(message)
 
