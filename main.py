@@ -57,11 +57,11 @@ async def on_message(message):
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+            await message.reply(reply_text)
             
         except Exception as e:
             print(f"Error Details: {e}")
-            await message.reply("هلا بيك حبيبي، وياك!")
+            await message.reply("صار خطأ بالاتصال، عود جرب مرة ثانية.")
 
     await bot.process_commands(message)
 
