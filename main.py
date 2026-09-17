@@ -16,7 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بالنسخة الأصلية: {bot.user.name}")
+    print(f"🚀 | البوت شغال: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -32,9 +32,7 @@ async def on_message(message):
 
         try:
             prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي). "
-                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                "أنت ذكاء اصطناعي سريع وذكي جداً. أجب باللهجة العراقية وبدون تكرار كلام المستخدم:\n"
                 f"{clean_prompt}"
             )
             
@@ -47,8 +45,9 @@ async def on_message(message):
             await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
             
         except Exception as e:
-            print(f"Error: {e}")
-            await message.reply("هلا بيك، وياك!")
+            # نطبع الخطأ بالكونسول حتى نشوفه بـ Railway بدال ما يكرر رسالة وهمية
+            print(f"EXACT ERROR: {e}")
+            await message.reply(f"صار خطأ يمعود: {str(e)[:60]}")
 
     await bot.process_commands(message)
 
