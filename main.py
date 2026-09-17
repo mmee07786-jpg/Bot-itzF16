@@ -10,11 +10,11 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 # تهيئة العميل بالطريقة الرسمية الحديثة
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# أحدث الموديلات السريعة بالترتيب (مع 3.8 في المقدمة)
+# أحدث الموديلات المستقرة والسرعة الفائقة بالترتيب
 MODELS_FALLBACK = [
-    "gemini-3.8-flash",
     "gemini-2.5-flash",
-    "gemini-2.0-flash"
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
 ]
 
 intents = discord.Intents.default()
@@ -24,7 +24,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بالنظام السريع وبأروع موديل: {bot.user.name}")
+    print(f"🚀 | البوت شغال وصاروخ وبأحدث الموديلات المستقرة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -50,7 +50,7 @@ async def on_message(message):
         reply_text = None
         success = False
 
-        # تجربة الموديلات بالترتيب بدءاً من 3.8
+        # تجربة الموديلات بالترتيب المضمون
         for model_name in MODELS_FALLBACK:
             try:
                 response = client.models.generate_content(
@@ -73,8 +73,7 @@ async def on_message(message):
                 reply_text = reply_text[:1997] + "..."
             await message.reply(reply_text)
         else:
-            # رسالة خطأ نظيفة ومخصصة للنصوص فقط
-            await message.reply("عيوني وياك، صار ضغط خفيف، احاجيني مرة ثانية بتركيز!")
+            await message.reply("عيوني فهد، صار ضغط خفيف، احاجيني مرة ثانية بتركيز!")
 
     await bot.process_commands(message)
 
