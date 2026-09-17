@@ -8,21 +8,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# دالة ذكية تبحث عن أول موديل نصي شغال ومتاح على مفتاحك حصراً
-def get_working_model():
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                if 'flash' in m.name or 'pro' in m.name:
-                    print(f"✅ | تم العثور على الموديل الشغال: {m.name}")
-                    return genai.GenerativeModel(m.name)
-    except Exception as e:
-        print(f"⚠️ خطأ بالبحث عن الموديل: {e}")
-    
-    # موديل احتياطي مضمون كملجأ أخير
-    return genai.GenerativeModel("gemini-1.5-flash")
-
-model = get_working_model()
+# استخدام الموديل المستقر 1.5-flash بشكل مباشر وصريح بدون أي دالة بحث
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 intents = discord.Intents.default()
 intents.message_content = True
