@@ -6,7 +6,6 @@ from google import genai
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# تهيئة العميل بالطريقة الجديدة كلياً
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 intents = discord.Intents.default()
@@ -16,7 +15,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 شغال بالنسخة الحديثة: {bot.user.name}")
+    print(f"🚀 | بوت izf18 اشتغل بالطريقة الصح: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -36,9 +35,9 @@ async def on_message(message):
                 f"{clean_prompt}"
             )
             
-            # استخدام الطريقة الحديثة للطلب
+            # استخدام الموديل الصحيح والمعتمد 1.5-flash
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-1.5-flash",
                 contents=prompt,
             )
             
@@ -55,7 +54,7 @@ async def on_message(message):
         except Exception as e:
             error_msg = str(e)
             print(f"Error Details: {error_msg}")
-            await message.reply(f"عذراً فهد، تأكد من مفتاح الـ API بـ Railway: `{error_msg[:80]}`")
+            await message.reply(f"عذراً فهد، صار خطأ: `{error_msg[:80]}`")
 
     await bot.process_commands(message)
 
