@@ -2,20 +2,21 @@ import os
 import io
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from PIL import Image
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-genai.configure(api_key=GEMINI_API_KEY)
+# تهيئة العميل بالطريقة الرسمية الحديثة
+client = genai.Client(api_key=GEMINI_API_KEY)
 
-# إضافة جيميناي 3.8 في صدارة القائمة والموديلات الحديثة الداعمة للصور
+# أحدث الموديلات المدعومة بالترتيب
 MODELS_FALLBACK = [
-    "gemini-3.8-flash",
     "gemini-2.5-flash",
     "gemini-2.0-flash",
-    "gemini-1.5-flash-latest"
+    "gemini-1.5-flash"
 ]
 
 intents = discord.Intents.default()
@@ -25,7 +26,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بأحدث موديلات جيميناي (بما فيها 3.8): {bot.user.name}")
+    print(f"🚀 | البوت اشتغل بدون أخطاء وبأحدث حزمة جيميناي: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -49,10 +50,10 @@ async def on_message(message):
                         print(f"⚠️ خطأ في قراءة الصورة: {img_err}")
 
         if not clean_prompt and not image_part:
-            await message.reply("هلا بيك فهد! عيوني وياك، شكو ماكو؟")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
             return
 
-        # التوجيه الطبيعي (لا يذكر اسم الصانع إلا إذا سألوه صراحة)
+        # التوجيه الطبيعي (بدون ذكر اسمك إلا عند السؤال المباشر)
         system_instruction = (
             "أنت ذكاء اصطناعي سريع وذكي جداً ومتحدث بلهجة عراقية طبيعية وعفوية. "
             "قواعدك:\n"
@@ -61,28 +62,29 @@ async def on_message(message):
             "3. إذا دز لك صورة، اقرأ بدقة كل ما فيها من نصوص أو تفاصيل واجب عن سؤال الشخص عنها باحترافية وبدون مقدمات معقدة."
         )
 
-        final_content = []
+        contents = []
         if clean_prompt:
-            final_content.append(clean_prompt)
+            contents.append(clean_prompt)
         else:
-            final_content.append("شنو المكتوب أو الموجود هاي الصورة؟ اشرحها بالتفصيل وبلهجتك العراقية.")
+            contents.append("شنو المكتوب أو الموجود هاي الصورة؟ اشرحها بالتفصيل وبلهجتك العراقية.")
 
         if image_part:
-            final_content.append(image_part)
+            contents.append(image_part)
 
         reply_text = None
         success = False
 
-        # تجربة الموديلات بالتتابع بدءاً من 3.8
+        # تجربة الموديلات بالترتيب باستخدام العميل الجديد
         for model_name in MODELS_FALLBACK:
             try:
-                current_model = genai.GenerativeModel(
-                    model_name=model_name,
-                    system_instruction=system_instruction
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                    ),
                 )
-                response = current_model.generate_content(final_content)
-                
-                if response and hasattr(response, 'text') and response.text:
+                if response and response.text:
                     reply_text = response.text.strip()
                     success = True
                     break
@@ -95,7 +97,7 @@ async def on_message(message):
                 reply_text = reply_text[:1997] + "..."
             await message.reply(reply_text)
         else:
-            await message.reply("عيوني فهد، صار ضغط خفيف أو الصورة ما انفتحتی عدل، جرب دزها مرة ثانية!")
+            await message.reply("صار ضغط خفيف أو الصورة ما انفتحتي عدل، جرب دزها مرة ثانية!")
 
     await bot.process_commands(message)
 
