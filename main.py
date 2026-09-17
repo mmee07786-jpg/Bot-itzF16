@@ -7,7 +7,7 @@ from google.genai import types
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# تهيئة العميل بالطريقة الحديثة الرسمية
+# تهيئة العميل بالطريقة الرسمية الحديثة
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 intents = discord.Intents.default()
@@ -17,7 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 شغال بالمكتبة الحديثة: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال وبكل قوة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -40,9 +40,9 @@ async def on_message(message):
                     "أجب بسرعة وبدون مقدمات معقدة."
                 )
                 
-                # استخدام الطريقة الحديثة بالطلب مع نموذج gemini-2.5-flash
+                # استخدام النموذج المباشر والصريح gemini-2.0-flash
                 response = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-2.0-flash',
                     contents=clean_prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
@@ -57,7 +57,7 @@ async def on_message(message):
                 await message.reply(reply_text if reply_text else "عيوني وياك!")
                 
             except Exception as e:
-                print(f"New GenAI Error: {e}")
+                print(f"GenAI Error Detail: {e}")
                 await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاتصال: `{str(e)[:50]}`")
 
     await bot.process_commands(message)
