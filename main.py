@@ -10,11 +10,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# أحدث موديلات جيميناي الداعمة للصور والنصوص مع التبديل التلقائي
+# إضافة جيميناي 3.8 في صدارة القائمة والموديلات الحديثة الداعمة للصور
 MODELS_FALLBACK = [
+    "gemini-3.8-flash",
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-2.0-flash",
+    "gemini-1.5-flash-latest"
 ]
 
 intents = discord.Intents.default()
@@ -24,7 +25,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بكامل القدرات (نصوص + صور + لهجة عراقية): {bot.user.name}")
+    print(f"🚀 | البوت شغال بأحدث موديلات جيميناي (بما فيها 3.8): {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -35,7 +36,7 @@ async def on_message(message):
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
-        # تجهيز محتوى الصورة إذا وُجدت
+        # قراءة الصورة المرفقة إن وجدت
         image_part = None
         if message.attachments:
             for attachment in message.attachments:
@@ -51,13 +52,13 @@ async def on_message(message):
             await message.reply("هلا بيك فهد! عيوني وياك، شكو ماكو؟")
             return
 
-        # توجيه ذكي يحافظ على الطبيعية ويذكر اسم الصانع فقط عند السؤال عنه
+        # التوجيه الطبيعي (لا يذكر اسم الصانع إلا إذا سألوه صراحة)
         system_instruction = (
             "أنت ذكاء اصطناعي سريع وذكي جداً ومتحدث بلهجة عراقية طبيعية وعفوية. "
             "قواعدك:\n"
             "1. رد دائماً بنفس لغة أو لهجة الشخص (بالعراقي الطبيعي أو الإنجليزية حسب طلبه).\n"
             "2. لا تذكر اسم صانعك ومبرمجك (فهد / itzF18) إلا إذا سألك شخص بشكل صريح ومباشر عن الشخص الذي صنعك أو برمجك أو صممك.\n"
-            "3. إذا دز لك صورة، اقرأ بدقة كل ما فيها من نصوص أو تفاصيل واجب عن سؤال الشخص عنها باحترافية."
+            "3. إذا دز لك صورة، اقرأ بدقة كل ما فيها من نصوص أو تفاصيل واجب عن سؤال الشخص عنها باحترافية وبدون مقدمات معقدة."
         )
 
         final_content = []
@@ -72,7 +73,7 @@ async def on_message(message):
         reply_text = None
         success = False
 
-        # محاولة الرد عبر الموديلات بالتتابع
+        # تجربة الموديلات بالتتابع بدءاً من 3.8
         for model_name in MODELS_FALLBACK:
             try:
                 current_model = genai.GenerativeModel(
