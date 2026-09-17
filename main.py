@@ -7,7 +7,19 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-3.6-flash")
+
+# إعدادات منع التكرار والجلتش (تخلي الموديل مركز وأكثر استقراراً)
+generation_config = {
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "top_k": 40,
+    "max_output_tokens": 1024,
+}
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash", # ثبتناه على الموديل السريع والشغال يمك
+    generation_config=generation_config
+)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -20,6 +32,7 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
+    # حماية مهمة: منع البوت من الرد على نفسه أو على أي بوت ثاني لتجنب أي Loop أو گلت
     if message.author.bot:
         return
 
@@ -32,11 +45,11 @@ async def on_message(message):
             return
 
         try:
-            # توجيه ذكي للسرعة والتكيف التام مع أي لغة أو لهجة
+            # توجيه ذكي للسرعة والتكيف التام مع أي لغة أو لهجة وبدون تكرار كلام المستخدم
             prompt = (
                 "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
                 "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
-                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                "أجب بسرعة وبدون مقدمات معقدة وبدون تكرار كلام المستخدم نهائياً على هذا الكلام: "
                 f"{clean_prompt}"
             )
             
@@ -51,7 +64,8 @@ async def on_message(message):
             
         except Exception as e:
             print(f"Error: {e}")
-            await message.reply("هلا بيك، وياك!")
+            # تم تعديل رد الخطأ ليكون هادئاً ولا يسبب أي إزعاج أو تكرار بالدردشة
+            await message.reply("ثواني وراجعلك، صار ضغط بالخدمة!")
 
     await bot.process_commands(message)
 
