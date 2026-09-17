@@ -8,7 +8,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash") # أو gemini-3.6-flash حسب الموديل المعتمد عندك
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -17,13 +17,13 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
+    print(f"🚀 | البوت شغال بدون تكرار وبكفاءة عالية: {bot.user.name}")
 
-# --- أمر توليد الصور المختصر !ima ---
+# --- أمر توليد الصور !ima ---
 @bot.command(name="ima")
 async def generate_image(ctx, *, prompt: str = None):
     if not prompt:
-        await ctx.reply("حبيبي، اكتب وصف الصورة ورا الأمر! مثلاً: `!ima a cyberpunk car`")
+        await ctx.reply("حبيبي، انطيني وصف الصورة ويا الأمر! مثلاً:\n`!ima a futuristic cyberpunk car`")
         return
 
     async with ctx.channel.typing():
@@ -35,7 +35,7 @@ async def generate_image(ctx, *, prompt: str = None):
                 if hasattr(part, 'inline_data') and part.inline_data:
                     image_bytes = part.inline_data.data
                     file = discord.File(io.BytesIO(image_bytes), filename="generated_image.png")
-                    await ctx.reply(content=f"🎨 | أبشر، هاي صورة لـ: **{prompt}**", file=file)
+                    await ctx.reply(content=f"🎨 | أبشر يا ملك، هاي صورتك لـ: **{prompt}**", file=file)
                     return
             
             await ctx.reply("عذراً عيوني، ما قدرت أولد الصورة، جرب وصف ثاني!")
@@ -43,45 +43,48 @@ async def generate_image(ctx, *, prompt: str = None):
             print(f"Image Error: {e}")
             await ctx.reply(f"عذراً حبيبي، صار عندي خطأ بتوليد الصورة: `{str(e)[:60]}`")
 
+# --- معالجة الرسائل والمنشن للنصوص فقط بدون أي تكرار ---
 @bot.event
 async def on_message(message):
+    # إهمال رسائل البوتات تماماً لمنع التكرار واللوب
     if message.author.bot:
         return
 
-    # إذا الرسالة تبدأ بـ ! تعامل وياها كأمر (مثل !ima)
-    if message.content.startswith("!"):
-        await bot.process_commands(message)
-        return
+    # أولاً: معالجة الأوامر (مثل !ima)
+    await bot.process_commands(message)
 
-    # التفاعل عند المنشن فقط للنصوص
+    # ثانياً: إذا الرسالة مو أمر، وتضمنت منشن للبوت حصراً
     if bot.user.mentioned_in(message) and not message.mention_everyone:
+        # التأكد إن الرسالة مو نتيجة أمر مكتوب
+        if message.content.startswith("!"):
+            return
+
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
             return
 
-        try:
-            prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
-                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
-                f"{clean_prompt}"
-            )
-            
-            response = model.generate_content(prompt)
-            reply_text = response.text.strip()
-            
-            if len(reply_text) > 2000:
-                reply_text = reply_text[:1997] + "..."
+        async with message.channel.typing():
+            try:
+                prompt = (
+                    "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
+                    "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
+                    "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                    f"{clean_prompt}"
+                )
+                
+                response = model.generate_content(prompt)
+                reply_text = response.text.strip()
+                
+                if len(reply_text) > 2000:
+                    reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
-            
-        except Exception as e:
-            print(f"Error: {e}")
-            await message.reply("هلا بيك، وياك!")
-
-    await bot.process_commands(message)
+                await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+                
+            except Exception as e:
+                print(f"Error: {e}")
+                await message.reply("هلا بيك، وياك!")
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
