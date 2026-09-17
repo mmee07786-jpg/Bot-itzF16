@@ -8,8 +8,8 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# استخدام موديل مضمون 100% ومحدد بصراحة تامة
-model = genai.GenerativeModel('gemini-1.5-flash')
+# استخدام gemini-pro الكلاسيكي لتجنب خطأ 1.5-flash نهائياً
+model = genai.GenerativeModel('gemini-pro')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,7 +18,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 اشتغل بنجاح تام: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال وبأفضل حال: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
