@@ -16,7 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
+    print(f"🚀 | البوت شغال وصك الطرگاعة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -28,30 +28,34 @@ async def on_message(message):
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
+            await message.reply("ها عيوني، وياك! شكو ماكو؟")
             return
 
         try:
-            # توجيه ذكي للسرعة والتكيف التام مع أي لغة أو لهجة
+            # صياغة واضحة تمنع التكرار وتخلي الرد عراقي صريح
             prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
-                "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
+                "أنت مساعد ذكي باللهجة العراقية. أجب على هذا السؤال مباشرة وبدون مقدمات وبدون تكرار كلام المستخدم:\n"
                 f"{clean_prompt}"
             )
             
-            # توليد الرد فوراً بدون تأخير
             response = model.generate_content(prompt)
-            reply_text = response.text.strip()
             
+            # التأكد من أن الاستجابة تحتوي على نص فعلي
+            if response and response.text:
+                reply_text = response.text.strip()
+            else:
+                reply_text = "حبيبي الرد اجا فارغ من السيرفر!"
+
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+            await message.reply(reply_text)
             
         except Exception as e:
-            print(f"Error: {e}")
-            await message.reply("هلا بيك، وياك!")
+            error_msg = str(e)
+            print(f"Error Details: {error_msg}")
+            # خلّيه يطبع جزء من الخطأ بالديسكورد حتى نعرف ليش ديضرب exception
+            await message.reply(f"عذراً فهد، صار خطأ بالطلب: `{error_msg[:100]}`")
 
     await bot.process_commands(message)
 
