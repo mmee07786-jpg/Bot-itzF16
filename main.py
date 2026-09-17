@@ -17,7 +17,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بدون تكرار وبكفاءة عالية: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
 
 # --- أمر توليد الصور !ima ---
 @bot.command(name="ima")
@@ -43,22 +43,19 @@ async def generate_image(ctx, *, prompt: str = None):
             print(f"Image Error: {e}")
             await ctx.reply(f"عذراً حبيبي، صار عندي خطأ بتوليد الصورة: `{str(e)[:60]}`")
 
-# --- معالجة الرسائل والمنشن للنصوص فقط بدون أي تكرار ---
 @bot.event
 async def on_message(message):
-    # إهمال رسائل البوتات تماماً لمنع التكرار واللوب
+    # تجاهل رسائل البوتات تماماً
     if message.author.bot:
         return
 
-    # أولاً: معالجة الأوامر (مثل !ima)
-    await bot.process_commands(message)
+    # معالجة الأوامر أولاً (مثل !ima)
+    if message.content.startswith("!"):
+        await bot.process_commands(message)
+        return
 
-    # ثانياً: إذا الرسالة مو أمر، وتضمنت منشن للبوت حصراً
+    # التفاعل عند المنشن فقط
     if bot.user.mentioned_in(message) and not message.mention_everyone:
-        # التأكد إن الرسالة مو نتيجة أمر مكتوب
-        if message.content.startswith("!"):
-            return
-
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
@@ -80,11 +77,14 @@ async def on_message(message):
                 if len(reply_text) > 2000:
                     reply_text = reply_text[:1997] + "..."
 
-                await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+                await message.reply(reply_text if reply_text else "عيوني وياك!")
                 
             except Exception as e:
-                print(f"Error: {e}")
-                await message.reply("هلا بيك، وياك!")
+                # طباعة الخطأ بالكونسول حتى نعرفه بدل ما نكرر كلمة ثابتة
+                print(f"Gemini API Error details: {e}")
+                await message.reply(f"عذراً حبيبي، صار عندي ضغط ثواني ورجعتلك! تأكد من النص.")
+
+    await bot.process_commands(message)
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
