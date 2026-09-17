@@ -8,11 +8,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# قائمة الموديلات بالترتيب (إذا واحد صار بيه ضغط أو خطأ، يعبر تلقائياً على اللي بعده)
-FALLBACK_MODELS = [
+# قائمة شاملة بأحدث موديلات جيميناي مرتبة للأسبقية والتبديل التلقائي الذكي
+MODELS_FALLBACK = [
+    "gemini-3.8-flash",
+    "gemini-3.5-flash-lite",
     "gemini-2.5-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-2.5-pro"
 ]
 
 intents = discord.Intents.default()
@@ -22,7 +23,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال مع نظام التبديل الذكي للموديلات: {bot.user.name}")
+    print(f"🚀 | البوت شغال بنظام التبديل الذكي لكل موديلات جيميناي الحديثة: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -49,8 +50,8 @@ async def on_message(message):
         reply_text = None
         success = False
 
-        # حلقة الدوران التلقائي بين الموديلات في حال واجه خطأ
-        for model_name in FALLBACK_MODELS:
+        # حلقة تجربة الموديلات الحديثة بالتتابع
+        for model_name in MODELS_FALLBACK:
             try:
                 current_model = genai.GenerativeModel(model_name)
                 response = current_model.generate_content(prompt)
@@ -58,17 +59,18 @@ async def on_message(message):
                 if response and hasattr(response, 'text') and response.text:
                     reply_text = response.text.strip()
                     success = True
-                    break # نجح الرد، نطلع من الحلقة
+                    print(f"✅ تم الرد بنجاح باستخدام الموديل: {model_name}")
+                    break
             except Exception as e:
-                print(f"⚠️ تحذير: الموديل {model_name} واجه مشكلة، جاري التجربة مع الموديل اللي بعده... الخطأ: {e}")
-                continue # جرب الموديل التالي
+                print(f"⚠️ الموديل {model_name} تعذر، جاري تجربة الموديل التالي... الخطأ: {e}")
+                continue
 
         if success and reply_text:
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
             await message.reply(reply_text)
         else:
-            await message.reply("عيوني فهد، صار ضغط عام بكل الموديلات، احاجيني مرة ثانية بعد ثواني!")
+            await message.reply("عيوني فهد، صار ضغط مؤقت بكل الموديلات، راسلني بعد ثواني ونور السيرفر!")
 
     await bot.process_commands(message)
 
