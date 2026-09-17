@@ -8,7 +8,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# إعدادات منع التكرار والجلتش (تخلي الموديل مركز وأكثر استقراراً)
+# إعدادات الاستقرار ومنع التكرار
 generation_config = {
     "temperature": 0.7,
     "top_p": 0.9,
@@ -17,7 +17,7 @@ generation_config = {
 }
 
 model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash", # ثبتناه على الموديل السريع والشغال يمك
+    model_name="gemini-1.5-flash",
     generation_config=generation_config
 )
 
@@ -32,7 +32,7 @@ async def on_ready():
 
 @bot.event
 async def on_message(message):
-    # حماية مهمة: منع البوت من الرد على نفسه أو على أي بوت ثاني لتجنب أي Loop أو گلت
+    # حماية لمنع البوت من الرد على نفسه ودخوله بحلقة تكرار
     if message.author.bot:
         return
 
@@ -45,27 +45,28 @@ async def on_message(message):
             return
 
         try:
-            # توجيه ذكي للسرعة والتكيف التام مع أي لغة أو لهجة وبدون تكرار كلام المستخدم
             prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
-                "أجب بسرعة وبدون مقدمات معقدة وبدون تكرار كلام المستخدم نهائياً على هذا الكلام: "
+                "أنت ذكاء اصطناعي سريع. قاعدتك الأساسية: رد باللهجة العراقية فقط وبدون تكرار كلام المستخدم نهائياً:\n"
                 f"{clean_prompt}"
             )
             
-            # توليد الرد فوراً بدون تأخير
+            # إرسال الطلب وانتظار الرد الحقيقي للاستجابة
             response = model.generate_content(prompt)
-            reply_text = response.text.strip()
+            
+            if response and response.text:
+                reply_text = response.text.strip()
+            else:
+                reply_text = "عيوني وياك، بس الرد اجى فارغ، جرب مرة ثانية!"
             
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
-            await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
+            await message.reply(reply_text)
             
         except Exception as e:
-            print(f"Error: {e}")
-            # تم تعديل رد الخطأ ليكون هادئاً ولا يسبب أي إزعاج أو تكرار بالدردشة
-            await message.reply("ثواني وراجعلك، صار ضغط بالخدمة!")
+            # طباعة الخطأ الحقيقي بالكونسول للمتابعة وإرسال رد هادئ غير مزعج
+            print(f"Full Error Details: {e}")
+            await message.reply("صار ضغط أو تأخير بالاستجابة، بس البوت وياك ما عافك! جرب مرة ثانية.")
 
     await bot.process_commands(message)
 
