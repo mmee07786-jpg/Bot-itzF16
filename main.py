@@ -1,13 +1,11 @@
 import os
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+import requests
+import json
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-1.5-flash")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") # أو حط المفتاح مباشرة هنا إذا تحب
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -16,7 +14,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال: {bot.user.name}")
+    print(f"🚀 | بوت izf18 شغال بالطلب المباشر: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -31,23 +29,45 @@ async def on_message(message):
             return
 
         try:
-            prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. أجب باللهجة العراقية وبدون تكرار كلام المستخدم:\n"
+            # توجيه ذكي باللهجة العراقية وبدون تكرار
+            full_prompt = (
+                "أنت ذكاء اصطناعي سريع وذكي جداً. أجب باللهجة العراقية وبدون تكرار كلام المستخدم نهائياً:\n"
                 f"{clean_prompt}"
             )
             
-            response = model.generate_content(prompt)
-            reply_text = response.text.strip()
+            # الطلب المباشر لـ API جيميناي نفس طريقة الـ cURL
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+            headers = {
+                "Content-Type": "application/json",
+                "X-goog-api-key": GEMINI_API_KEY
+            }
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": full_prompt}
+                        ]
+                    }
+                ]
+            }
             
+            response = requests.post(url, headers=headers, data=json.dumps(payload))
+            res_data = response.json()
+            
+            # استخراج النص من رد الجيسون
+            try:
+                reply_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            except Exception:
+                reply_text = f"صار خطأ بقراءة الرد: {str(res_data)[:100]}"
+
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
             await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
             
         except Exception as e:
-            # نطبع الخطأ بالكونسول حتى نشوفه بـ Railway بدال ما يكرر رسالة وهمية
-            print(f"EXACT ERROR: {e}")
-            await message.reply(f"صار خطأ يمعود: {str(e)[:60]}")
+            print(f"Error: {e}")
+            await message.reply(f"عذراً فهد، صار خطأ: {str(e)[:60]}")
 
     await bot.process_commands(message)
 
