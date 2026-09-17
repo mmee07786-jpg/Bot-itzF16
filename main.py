@@ -7,8 +7,22 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
-# استخدام اسم الموديل المدعوم والمستقر حالياً
-model = genai.GenerativeModel("gemini-2.0-flash")
+
+# دالة ذكية تبحث عن أول موديل نصي شغال ومتاح على مفتاحك حصراً
+def get_working_model():
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                if 'flash' in m.name or 'pro' in m.name:
+                    print(f"✅ | تم العثور على الموديل الشغال: {m.name}")
+                    return genai.GenerativeModel(m.name)
+    except Exception as e:
+        print(f"⚠️ خطأ بالبحث عن الموديل: {e}")
+    
+    # موديل احتياطي مضمون كملجأ أخير
+    return genai.GenerativeModel("gemini-1.5-flash")
+
+model = get_working_model()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -17,7 +31,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
+    print(f"🚀 | البوت شغال وبأفضل شكل: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -51,7 +65,7 @@ async def on_message(message):
                 
             except Exception as e:
                 print(f"Gemini API Error Detail: {e}")
-                await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاتصال: `{str(e)[:50]}`")
+                await message.reply(f"عذراً حبيبي، صار عندي خطأ: `{str(e)[:50]}`")
 
     await bot.process_commands(message)
 
