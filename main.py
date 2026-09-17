@@ -1,14 +1,11 @@
 import os
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+import requests
+import json
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-genai.configure(api_key=GEMINI_API_KEY)
-# تعديل الموديل حصراً إلى الإصدار الصحيح والمستقر
-model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -24,7 +21,6 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # التفاعل عند المنشن فقط
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
@@ -33,30 +29,41 @@ async def on_message(message):
             return
 
         try:
-            prompt = (
-                "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-                "(إذا تحدث باللهجة العراقية رد بعراقي). أجب بسرعة وبدون مقدمات وبدون تكرار كلام المستخدم على هذا الكلام: "
+            full_prompt = (
+                "أنت ذكاء اصطناعي سريع. قاعدتك الأساسية: رد باللهجة العراقية فقط وبدون تكرار كلام المستخدم نهائياً:\n"
                 f"{clean_prompt}"
             )
             
-            response = model.generate_content(prompt)
-            reply_text = response.text.strip()
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+            headers = {
+                "Content-Type": "application/json",
+                "X-goog-api-key": GEMINI_API_KEY
+            }
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {"text": full_prompt}
+                        ]
+                    }
+                ]
+            }
             
+            response = requests.post(url, headers=headers, data=json.dumps(payload))
+            res_data = response.json()
+            
+            reply_text = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
 
             await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
             
         except Exception as e:
-            print(f"Error: {e}")
-            await message.reply(f"صار خطأ يمعود: {str(e)[:60]}")
+            print(f"Error Details: {e}")
+            await message.reply("هلا بيك حبيبي، وياك!")
 
     await bot.process_commands(message)
-
-# أمر إضافي لتصميم وصناعة الصور (كمثال تجريبي نبني عليه)
-@bot.command(name="image", help="توليد وتصميم صور عبر الذكاء الاصطناعي")
-async def generate_image(ctx, *, prompt_text: str):
-    await ctx.send(f"🎨 | جاري العمل على تصميم الصورة للطلب: **{prompt_text}** (قريباً نربطها بأقوى نموذج صور!)")
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
