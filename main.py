@@ -7,6 +7,7 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
+# استعملنا الاسم الصحيح والمستقر للموديل
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 intents = discord.Intents.default()
@@ -16,28 +17,22 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال والـ Cogs جاهزة: {bot.user.name}")
-    
-    # تحميل ملف الصور (Cog) بشكل آلي
-    try:
-        await bot.load_extension("image_cog")
-        print("🎨 | تم تحميل نظام الصور بنجاح!")
-    except Exception as e:
-        print(f"❌ | فشل تحميل نظام الصور: {e}")
+    print(f"🚀 | البوت شغال بسرعة البرق ومتكيف اللغات: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    # التفاعل عند المنشن حصراً للنصوص
+    # التفاعل عند المنشن فقط
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
         if not clean_prompt:
-            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
+            await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟ / Hey there!")
             return
 
+        # إضافة حالة الكتابة حتى البوت يبين وكأنه ديجاوب بفعالية
         async with message.channel.typing():
             try:
                 prompt = (
@@ -53,13 +48,13 @@ async def on_message(message):
                 if len(reply_text) > 2000:
                     reply_text = reply_text[:1997] + "..."
 
-                await message.reply(reply_text if reply_text else "عيوني وياك!")
+                await message.reply(reply_text if reply_text else "هلا بيك حبيبي!")
                 
             except Exception as e:
-                print(f"Text Error: {e}")
-                await message.reply("عيوني وياك، صار عندي لود ثواني ورجعتلك!")
+                # حتى يطبعلك الخطأ الحقيقي بالكونسول ويبين السبب اذا اكو مشكلة ثانية
+                print(f"Gemini API Error Detail: {e}")
+                await message.reply(f"عذراً حبيبي، صار عندي خطأ بالاتصال: `{str(e)[:50]}`")
 
-    # هذه الدالة مهمة حتى تستقبل الـ Cogs الأوامر بشكل طبيعي
     await bot.process_commands(message)
 
 if __name__ == "__main__":
