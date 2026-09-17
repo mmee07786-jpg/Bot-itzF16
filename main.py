@@ -2,7 +2,6 @@ import os
 import discord
 from discord.ext import commands
 import google.generativeai as genai
-import io
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -17,44 +16,21 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | بوت izf18 شغال وبأفضل حالة: {bot.user.name}")
-
-# --- أمر توليد الصور !ima ---
-@bot.command(name="ima")
-async def generate_image(ctx, *, prompt: str = None):
-    if not prompt:
-        await ctx.reply("حبيبي، انطيني وصف الصورة ويا الأمر! مثلاً:\n`!ima a futuristic cyberpunk car`")
-        return
-
-    async with ctx.channel.typing():
-        try:
-            image_model = genai.GenerativeModel('imagen-3.0-generate-002')
-            result = image_model.generate_content(prompt)
-            
-            for part in result.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    image_bytes = part.inline_data.data
-                    file = discord.File(io.BytesIO(image_bytes), filename="generated_image.png")
-                    await ctx.reply(content=f"🎨 | أبشر يا ملك، هاي صورتك لـ: **{prompt}**", file=file)
-                    return
-            
-            await ctx.reply("عذراً عيوني، ما قدرت أولد الصورة، جرب وصف ثاني!")
-        except Exception as e:
-            print(f"Image Error: {e}")
-            await ctx.reply(f"عذراً حبيبي، صار عندي خطأ بتوليد الصورة: `{str(e)[:60]}`")
+    print(f"🚀 | البوت شغال والـ Cogs جاهزة: {bot.user.name}")
+    
+    # تحميل ملف الصور (Cog) بشكل آلي
+    try:
+        await bot.load_extension("image_cog")
+        print("🎨 | تم تحميل نظام الصور بنجاح!")
+    except Exception as e:
+        print(f"❌ | فشل تحميل نظام الصور: {e}")
 
 @bot.event
 async def on_message(message):
-    # تجاهل رسائل البوتات تماماً
     if message.author.bot:
         return
 
-    # معالجة الأوامر أولاً (مثل !ima)
-    if message.content.startswith("!"):
-        await bot.process_commands(message)
-        return
-
-    # التفاعل عند المنشن فقط
+    # التفاعل عند المنشن حصراً للنصوص
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
@@ -80,10 +56,10 @@ async def on_message(message):
                 await message.reply(reply_text if reply_text else "عيوني وياك!")
                 
             except Exception as e:
-                # طباعة الخطأ بالكونسول حتى نعرفه بدل ما نكرر كلمة ثابتة
-                print(f"Gemini API Error details: {e}")
-                await message.reply(f"عذراً حبيبي، صار عندي ضغط ثواني ورجعتلك! تأكد من النص.")
+                print(f"Text Error: {e}")
+                await message.reply("عيوني وياك، صار عندي لود ثواني ورجعتلك!")
 
+    # هذه الدالة مهمة حتى تستقبل الـ Cogs الأوامر بشكل طبيعي
     await bot.process_commands(message)
 
 if __name__ == "__main__":
