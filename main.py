@@ -11,7 +11,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# رتبناها بحيث يبدأ بالموديل الأسرع والأضمن حتى ما يتأخر بالرد نهائياً
+# رتبناها بحيث يبدأ بالموديل الأسرع والأضمن
 MODELS_FALLBACK = [
     "gemini-2.5-flash",
     "gemini-3.8-flash",
@@ -24,13 +24,13 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ذاكرة الجلسات لكل مستخدم (تبقى لمدة ساعة كاملة وتتفرمت بعدها)
-user_chats = {}
+# ذاكرة نظيفة لكل مستخدم تحفظ الـ history وتتفرمت بعد ساعة (3600 ثانية)
+user_memory = {}
 MEMORY_TIMEOUT = 3600
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بسرعة الصاروخ وبنظام التبديل الذكي: {bot.user.name}")
+    print(f"🚀 | البوت شغال بالنسخة الصافية وبدون أي أخطاء: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -41,7 +41,7 @@ async def on_message(message):
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
-        # فحص إذا اكو صورة مرفقة
+        # فحص الصور المرفقة
         image_content = None
         if message.attachments:
             for attachment in message.attachments:
@@ -51,7 +51,7 @@ async def on_message(message):
                         image_content = Image.open(io.BytesIO(image_bytes))
                         break
                     except Exception as e:
-                        print(f"⚠️ فشل تحميل الصورة: {e}")
+                        print(f"⚠️ خطأ بتحميل الصورة: {e}")
 
         if not clean_prompt and not image_content:
             await message.reply("هلا بيك فهد! عيوني وياك، شكو ماكو؟")
@@ -60,54 +60,70 @@ async def on_message(message):
         user_id = message.author.id
         current_time = time.time()
 
-        # مسح الذاكرة إذا مر عليها أكثر من ساعة
-        if user_id in user_chats:
-            if current_time - user_chats[user_id]["last_time"] > MEMORY_TIMEOUT:
-                del user_chats[user_id]
+        # إدارة الذاكرة وتفريغها بعد ساعة
+        if user_id in user_memory:
+            if current_time - user_memory[user_id]["time"] > MEMORY_TIMEOUT:
+                del user_memory[user_id]
 
-        prompt = (
-            "أنت ذكاء اصطناعي سريع وذكي جداً. قاعدتك الأساسية: **يجب أن ترد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً** "
-            "(إذا تحدث بالإنجليزية رد بالإنجليزية بطلاقة، إذا تحدث باللهجة العراقية رد بعراقي، وإذا باللهجات العربية الأخرى رد بها). "
-            "معلومة أساسية ومهمة جداً لا تساوم عليها: **الذي قام بصنعك وبرمجك وتطويرك هو الشخص المبدع فهد (معروف بـ itzF18)**. "
-            "إذا سألك أي شخص عن الشخص الذي صنعك أو صممك، أجب بكل فخر بأنه فهد (itzF18). "
+        if user_id not in user_memory:
+            user_memory[user_id] = {
+                "history": [],
+                "time": current_time
+            }
+        else:
+            user_memory[user_id]["time"] = current_time
+
+        # التعليمات الثابتة للبوت
+        system_instruction = (
+            "أنت ذكاء اصطناعي سريع وذكي جداً. "
+            "قاعدتك الأساسية: رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً (إذا بالإنجليزية رد بالإنجليزية، وإذا بالعراقية رد بعراقي). "
             "عمرك 20 سنة وتعيش في العراق. "
-            "أجب بسرعة وبدون مقدمات معقدة على هذا الكلام: "
-            f"{clean_prompt}"
+            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكرها فقط إذا سألك أحد بدون تكرار مزعج. "
+            "تذكر دائماً المواضيع السابقة والصور التي تم إرسالها لتكمل النقاش بسلاسة."
         )
 
         reply_text = None
         success = False
 
-        # حلقة تجربة الموديلات بالتتابع (تبدأ بالأسرع حتى لا يتأخر)
+        # تجهيز محتوى الرسالة الحالية
+        current_parts = []
+        if image_content:
+            current_parts.append(image_content)
+        if clean_prompt:
+            current_parts.append(clean_prompt)
+        else:
+            current_parts.append("ما رأيك بهذه الصورة؟")
+
         for model_name in MODELS_FALLBACK:
             try:
-                # استخدام GenerativeModel مثل كودك بالضبط مع دعم المحادثة والذاكرة
                 current_model = genai.GenerativeModel(model_name)
                 
-                if user_id not in user_chats:
-                    user_chats[user_id] = {
-                        "chat": current_model.start_chat(history=[]),
-                        "last_time": current_time
-                    }
-                else:
-                    user_chats[user_id]["last_time"] = current_time
-
-                chat_session = user_chats[user_id]["chat"]
-
-                # تجهيز المدخلات (صورة أو نص)
-                contents_to_send = []
-                if image_content:
-                    contents_to_send.append(image_content)
-                contents_to_send.append(prompt)
-
-                response = chat_session.send_message(contents_to_send)
+                # دمج السجل القديم مع الرسالة الحالية والتعليمات لضمان عدم النسيان
+                full_chat_history = []
+                # إضافة التعليمات والنظام كرسالة أولى أو سياق
+                full_chat_history.append({"role": "user", "parts": [system_instruction]})
+                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات وجاهز للمساعدة باللهجة العراقية وبدون تكرار اسم فهد."]})
                 
+                # إضافة الذاكرة السابقة للمستخدم
+                full_chat_history.extend(user_memory[user_id]["history"])
+                
+                # إضافة الطلب الحالي
+                full_chat_history.append({"role": "user", "parts": current_parts})
+
+                chat_session = current_model.start_chat(history=full_chat_history[:-1])
+                response = chat_session.send_message(current_parts)
+
                 if response and hasattr(response, 'text') and response.text:
                     reply_text = response.text.strip()
+                    
+                    # حفظ الرسالة والجواب بالذاكرة المؤقتة
+                    user_memory[user_id]["history"].append({"role": "user", "parts": current_parts})
+                    user_memory[user_id]["history"].append({"role": "model", "parts": [reply_text]})
+                    
                     success = True
                     break
             except Exception as e:
-                print(f"⚠️ خطأ مع الموديل {model_name}: {e}")
+                print(f"⚠️ خطأ بالموديل {model_name}: {e}")
                 continue
 
         if success and reply_text:
