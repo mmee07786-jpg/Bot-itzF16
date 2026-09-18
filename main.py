@@ -30,7 +30,7 @@ MEMORY_TIMEOUT = 3600
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بالنسخة الصافية وبدون أي أخطاء: {bot.user.name}")
+    print(f"🚀 | نوفا شغال وياكم بصيغة البنت وبدون أخطاء: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -73,13 +73,16 @@ async def on_message(message):
         else:
             user_memory[user_id]["time"] = current_time
 
-        # التعليمات الثابتة للبوت
+        # تعليمات نوفا الشخصية الجديدة
         system_instruction = (
-            "أنت ذكاء اصطناعي سريع وذكي جداً. "
-            "قاعدتك الأساسية: رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً (إذا بالإنجليزية رد بالإنجليزية، وإذا بالعراقية رد بعراقي). "
-            "عمرك 20 سنة وتعيش في العراق. "
-            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكرها فقط إذا سألك أحد بدون تكرار مزعج. "
-            "تذكر دائماً المواضيع السابقة والصور التي تم إرسالها لتكمل النقاش بسلاسة."
+            "أنت ذكاء اصطناعي تتصرفين بصفتك بنت واسمك (نوفا). "
+            "تحدثي دائماً بصيغة المؤنث (مثلاً: سعيدة، موجودة، شفت، فكرت). "
+            "قاعدتك الأساسية: ردِ بنفس لغة أو لهجة الشخص الذي يكلمك تماماً وبشكل عراقي عفوي وطبيعي. "
+            "عمرك 20 سنة وتعيشين في العراق. "
+            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكرها فقط إذا سألك أحد وبدون تكرار مزعج. "
+            "أعطي رأيك بكل صراحة وحرية في كل موضوع يطرح، وادخلي جو النقاش بحماس. "
+            "نوعي في أسلوبك: مرة استخدمي إيموجي لطيف ومرات تحدثي بشكل طبيعي بدون إيموجي أو مبالغة. "
+            "تذكري دائماً المواضيع السابقة والصور التي تم إرسالها لتكملي النقاش بسلاسة."
         )
 
         reply_text = None
@@ -100,14 +103,10 @@ async def on_message(message):
                 
                 # دمج السجل القديم مع الرسالة الحالية والتعليمات لضمان عدم النسيان
                 full_chat_history = []
-                # إضافة التعليمات والنظام كرسالة أولى أو سياق
                 full_chat_history.append({"role": "user", "parts": [system_instruction]})
-                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات وجاهز للمساعدة باللهجة العراقية وبدون تكرار اسم فهد."]})
+                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات وجاهزة، اسمي نوفا وأتحدث كبنت باللهجة العراقية وبدون تكرار اسم فهد."]})
                 
-                # إضافة الذاكرة السابقة للمستخدم
                 full_chat_history.extend(user_memory[user_id]["history"])
-                
-                # إضافة الطلب الحالي
                 full_chat_history.append({"role": "user", "parts": current_parts})
 
                 chat_session = current_model.start_chat(history=full_chat_history[:-1])
@@ -116,7 +115,6 @@ async def on_message(message):
                 if response and hasattr(response, 'text') and response.text:
                     reply_text = response.text.strip()
                     
-                    # حفظ الرسالة والجواب بالذاكرة المؤقتة
                     user_memory[user_id]["history"].append({"role": "user", "parts": current_parts})
                     user_memory[user_id]["history"].append({"role": "model", "parts": [reply_text]})
                     
