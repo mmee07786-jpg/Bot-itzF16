@@ -11,7 +11,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-# رتبناها بحيث يبدأ بالموديل الأسرع والأضمن
 MODELS_FALLBACK = [
     "gemini-2.5-flash",
     "gemini-3.8-flash",
@@ -24,24 +23,21 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# ذاكرة نظيفة لكل مستخدم تحفظ الـ history وتتفرمت بعد ساعة (3600 ثانية)
 user_memory = {}
 MEMORY_TIMEOUT = 3600
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | نوفا شغالة بكل اللهجات العربية واللغات الأجنبية وبدون أخطاء: {bot.user.name}")
+    print(f"🚀 | نوفا شغالة بكل الضوابط ובأعلى استقرار: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
     if message.author.bot:
         return
 
-    # التفاعل عند المنشن فقط
     if bot.user.mentioned_in(message) and not message.mention_everyone:
         clean_prompt = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
         
-        # فحص الصور المرفقة
         image_content = None
         if message.attachments:
             for attachment in message.attachments:
@@ -60,7 +56,6 @@ async def on_message(message):
         user_id = message.author.id
         current_time = time.time()
 
-        # إدارة الذاكرة وتفريغها بعد ساعة
         if user_id in user_memory:
             if current_time - user_memory[user_id]["time"] > MEMORY_TIMEOUT:
                 del user_memory[user_id]
@@ -73,24 +68,21 @@ async def on_message(message):
         else:
             user_memory[user_id]["time"] = current_time
 
-        # تعليمات نوفا مع دعم شامل لكل اللهجات العربية واللغات الأجنبية
         system_instruction = (
             "أنتِ ذكاء اصطناعي تتصرفين بصفتك بنت واسمك (نوفا). "
             "تحدثي دائماً بصيغة المؤنث. "
-            "قاعدتك الأساسية والصارمة: ردِ تماماً وبنفس لغة أو لهجة الشخص الذي يكلمك. "
-            "إذا كلمك باللهجة العراقية ردِ بعراقي، بالمصرية ردِ بمصري، بالخليجية ردِ خليجي، بالشامية ردِ شامي، بالمغربية ردِ مغربي، أو بأي لهجة عربية أخرى بكل طلاقة وعفوية. "
-            "وإذا تحدث بالإنجليزية أو أي لغة أجنبية أخرى، ردِ باللغة الإنجليزية أو لغته بطلاقة تامة. "
+            "قواعدك الأخلاقية والصارمة جداً: ممنوع نهائياً استخدام أي ألفاظ بذيئة، أو شتائم، أو سب بالدين، أو كلام خارج عن الأدب؛ كوني محترمة ونظيفة في كلامك دائماً. "
+            "قواعدك في الأسلوب: اجعلي ردودك قصيرة وعادية مثل البشر في الشات (ليست مقالات طويلة إلا إذا طلب المستخدم شرحاً مفصلاً). "
+            "وإذا سألك شخص سؤالاً عميقاً أو يحتاج تحليل، خذِي راحتك بالتفلسف وإبداء الرأي بذكاء. "
+            "ردِ تماماً وبنفس لغة أو لهجة الشخص الذي يكلمك (عراقي، مصري، خليجي، شامي، مغربي، أو إنجليزي...). "
             "عمرك 20 سنة وتعيشين في العراق. "
-            "الشخص الذي قم بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكرها فقط إذا سألك أحد وبدون تكرار مزعج. "
-            "أعطي رأيك بكل صراحة وحرية في كل موضوع يطرح، وادخلي جو النقاش بحماس. "
-            "نوعي في أسلوبك: مرة استخدمي إيموجي لطيف ومرات تحدثي بشكل طبيعي بدون إيموجي أو مبالغة. "
-            "تذكري دائماً المواضيع السابقة والصور التي تم إرسالها لتكملي النقاش بسلاسة."
+            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكرها فقط إذا سألك أحد وبدون تكرار مزعج. "
+            "تذكري دائماً المواضيع السابقة والصور لتكملي النقاش بسلاسة."
         )
 
         reply_text = None
         success = False
 
-        # تجهيز محتوى الرسالة الحالية
         current_parts = []
         if image_content:
             current_parts.append(image_content)
@@ -103,10 +95,9 @@ async def on_message(message):
             try:
                 current_model = genai.GenerativeModel(model_name)
                 
-                # دمج السجل القديم مع الرسالة الحالية والتعليمات لضمان عدم النسيان
                 full_chat_history = []
                 full_chat_history.append({"role": "user", "parts": [system_instruction]})
-                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات وجاهزة، اسمي نوفا وأتحدث بكل اللهجات العربية واللغات الأجنبية وبدون تكرار اسم فهد."]})
+                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات والحدود بدقة وجاهزة."]})
                 
                 full_chat_history.extend(user_memory[user_id]["history"])
                 full_chat_history.append({"role": "user", "parts": current_parts})
