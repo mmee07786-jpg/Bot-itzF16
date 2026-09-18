@@ -4,6 +4,7 @@ from discord.ext import commands
 import google.generativeai as genai
 from PIL import Image
 import io
+import time
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -23,9 +24,14 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# نظام الذاكرة المؤقتة لكل مستخدم (يحفظ الجلسات وتنسحب لفترة ساعة كاملة)
+# شكل القاموس: {user_id: {"chat": chat_session, "last_time": timestamp}}
+user_chats = {}
+MEMORY_TIMEOUT = 3600  # ساعة كاملة بالثواني (60 دقيقة)
+
 @bot.event
 async def on_ready():
-    print(f"🚀 | البوت شغال بسرعة الصاروخ وبدعم الصور: {bot.user.name}")
+    print(f"🚀 | البوت شغال بنظام الذاكرة المؤقتة (ساعة كاملة) ودعم الصور: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -52,38 +58,65 @@ async def on_message(message):
             await message.reply("هلا بيك! عيوني وياك، شكو ماكو؟")
             return
 
-        # التعليمات الدقيقة (العمر 20، من العراق، صانعك فهد itzF18 بدون تكرار مزعج للاسم، ويرد بنفس اللهجة)
+        user_id = message.author.id
+        current_time = time.time()
+
+        # التحقق من انتهاء وقت الذاكرة (ساعة كاملة) أو إنشاء جلسة جديدة
+        if user_id in user_chats:
+            if current_time - user_chats[user_id]["last_time"] > MEMORY_TIMEOUT:
+                # انتهت الساعة، مسح الذاكرة القديمة وبدء جلسة جديدة
+                del user_chats[user_id]
+
+        # التعليمات الدقيقة وثابتة
         system_instruction = (
             "أنت ذكاء اصطناعي سريع وذكي جداً. "
             "قاعدتك الأساسية: رد بنفس لغة أو لهجة الشخص الذي يكلمك تماماً (إذا تحدث بالإنجليزية رد بالإنجليزية، إذا بالعراقية رد بعراقي). "
             "معلوماتك الشخصية: عمرك الحقيقي 20 سنة، وتعيش في العراق. "
             "معلومة عن الصنع: الشخص الذي قام بصنعك وبرمجتك وتطويرك هو المبدع فهد (معروف بـ itzF18). اذكر هذه المعلومة فقط إذا سألك أحد عن صانعك، ولا تكرر اسم فهد في كل جملة لكي لا يكون الأمر مزعجاً. "
-            "أجب بسرعة وبدون مقدمات معقدة."
+            "أجب بسرعة وبدون مقدمات معقدة وتذكر كل ما تم تداوله في هذه المحادثة."
         )
-
-        final_input = []
-        if image_content:
-            final_input.append(image_content)
-        if clean_prompt:
-            final_input.append(clean_prompt)
-        else:
-            final_input.append("صف هذه الصورة باختصار وبنفس لهجة السائل.")
 
         reply_text = None
         success = False
 
-        # حلقة تجربة الموديلات بالتتابع
+        # حلقة تجربة الموديلات مع الاحتفاظ بالسياق (Chat Session)
         for model_name in MODELS_FALLBACK:
             try:
-                current_model = genai.GenerativeModel(model_name)
-                # دمج التعليمات مع المدخلات لإرسالها للموديل
-                response = current_model.generate_content([system_instruction] + final_input)
+                current_model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_instruction
+                )
                 
-                if response and hasattr(response, 'text') and response.text:
+                # إذا لم تكن جلسة المحادثة موجودة أو تم مسحها، نبدأ جلسة جديدة
+                if user_id not in user_chats:
+                    user_chats[user_id] = {
+                        "chat": current_model.start_chat(history=[]),
+                        "last_time": current_time
+                    }
+                else:
+                    # تحديث وقت النشاط الأخير
+                    user_chats[user_id]["last_time"] = current_time
+
+                chat_session = user_chats[user_id]["chat"]
+
+                # تجميع المحتوى المرسل (صورة أو نص أو كلاهما)
+                content_to_send = []
+                if image_content:
+                    content_to_send.append(image_content)
+                if clean_prompt:
+                    content_to_send.append(clean_prompt)
+                else:
+                    content_to_send.append("صف هذه الصورة باختصار وبنفس لهجة السائل.")
+
+                # إرسال الرسالة إلى جلسة الدردشة المحفوظة
+                response = chat_session.send_message(content_to_send)
+                
+                if response and response.text:
                     reply_text = response.text.strip()
                     success = True
                     break
             except Exception as e:
+                # في حال حدث خطأ مع الموديل، جرب الموديل التالي
                 continue
 
         if success and reply_text:
