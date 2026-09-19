@@ -6,7 +6,6 @@ from PIL import Image
 import io
 import time
 import urllib.parse
-import aiohttp
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -75,7 +74,7 @@ async def on_message(message):
             "تحدثي دائماً بصيغة المؤنث (مثلاً: سعيدة، موجودة، شفت، فكرت). "
             "قواعدك الأخلاقية والصارمة جداً: ممنوع نهائياً استخدام أي ألفاظ بذيئة، أو شتائم، أو سب بالدين، أو كلام خارج عن الأدب؛ كوني محترمة ونظيفة في كلامك دائماً. "
             "قواعدك في الاسلوب: خذي كل كلمة يقولها فهد أو المستخدم أو اليوزر المذكور (<@1355986158521291125>) بكل جدية وتجاوبي معها بدقة، واجعلي ردودك قصيرة وعادية مثل البشر في الشات. "
-            "عندما يطلب منك المستخدم تصميم أو توليد صورة، قومي بالرد بعبارة قصيرة ومناسبة (مثل: 'دقيقة وحدة، دازتها إلك حالا..')، وفي نفس الوقت سيقوم النظام بتوليد الصورة وإرسالها مباشرة بدون علامة مائية. "
+            "عندما يطلب منك المستخدم تصميم أو توليد صورة، قومي بالرد بعبارة قصيرة ومناسبة (مثل: 'دقيقة وحدة، دازتها إلك حالا..')، وفي نفس الوقت سيقوم النظام بتوليد الصورة وعرضها مباشرة بدون علامة مائية. "
             "إذا أرسل لك المستخدم صورة، تستطيعين تحليلها بدقة وإكمال النقاش أو البناء عليها بسلاسة. "
             "عمرك 20 سنة وتعيشين في العراق. "
             "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكراها فقط إذا سألك أحد وبدون تكرار مزعج."
@@ -127,20 +126,14 @@ async def on_message(message):
             
             if is_image_request:
                 encoded_prompt = urllib.parse.quote(clean_prompt)
-                image_url = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true"
+                # استخدام الرابط المباشر للصور لضمان عدم حصول خطأ بالتحميل في ديسكورد
+                image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
                 
-                try:
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(image_url) as resp:
-                            if resp.status == 200:
-                                image_data = await resp.read()
-                                file = discord.File(io.BytesIO(image_data), filename="nova_image.png")
-                                await message.reply(content=reply_text, file=file)
-                            else:
-                                await message.reply(content=reply_text + "\n(عفواً فهد، صار لود عالي على توليد الصورة، جرب مرة ثانية!)")
-                except Exception as ex:
-                    print(f"Image generation error: {ex}")
-                    await message.reply(content=reply_text)
+                embed = discord.Embed(color=0x2b2d31)
+                embed.set_image(url=image_url)
+                embed.set_footer(text=f"طلب بواسطة: {message.author.name}")
+                
+                await message.reply(content=reply_text, embed=embed)
             else:
                 await message.reply(reply_text)
         else:
