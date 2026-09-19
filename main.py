@@ -125,15 +125,22 @@ async def on_message(message):
             is_image_request = any(word in lower_prompt for word in ["صورة", "تصميم", "ارسم", "دب", "صممي", "ريدج"])
             
             if is_image_request:
+                # 1. ندز رسالة أولية سريعة تبين أن البوت ديشتغل
+                sent_message = await message.reply(content=reply_text)
+                
+                # 2. نجهز رابط الصورة
                 encoded_prompt = urllib.parse.quote(clean_prompt)
-                # استخدام الرابط المباشر للصور لضمان عدم حصول خطأ بالتحميل في ديسكورد
                 image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&nologo=true"
                 
                 embed = discord.Embed(color=0x2b2d31)
                 embed.set_image(url=image_url)
                 embed.set_footer(text=f"طلب بواسطة: {message.author.name}")
                 
-                await message.reply(content=reply_text, embed=embed)
+                # 3. بعد ما يجهز الرابط، نسوي تعديل (Edit) للرسالة ونخلي بيها الصورة مباشرة
+                try:
+                    await sent_message.edit(content=reply_text, embed=embed)
+                except Exception as ex:
+                    print(f"Edit message error: {ex}")
             else:
                 await message.reply(reply_text)
         else:
@@ -143,3 +150,4 @@ async def on_message(message):
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
+
