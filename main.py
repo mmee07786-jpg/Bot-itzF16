@@ -6,6 +6,7 @@ from PIL import Image
 import io
 import time
 import urllib.parse
+import aiohttp
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -121,19 +122,25 @@ async def on_message(message):
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
             
-            # التحقق إذا المستخدم طلب تصميم أو صورة لكي يتم إرسال الصورة فعلياً
             lower_prompt = clean_prompt.lower()
-            is_image_request = any(word in lower_prompt for word in ["صورة", "تصميم", "ارسم", "دب", "صممي", "ريدج", "صورة دب"])
+            is_image_request = any(word in lower_prompt for word in ["صورة", "تصميم", "ارسم", "دب", "صممي", "ريدج"])
             
             if is_image_request:
-                # توليد رابط الصورة المباشر بدون علامة مائية
                 encoded_prompt = urllib.parse.quote(clean_prompt)
                 image_url = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true"
-                embed = discord.Embed(color=0x2b2d31)
-                embed.set_image(url=image_url)
-                embed.set_footer(text=f"طلب بواسطة: {message.author.name}")
                 
-                await message.reply(content=reply_text, embed=embed)
+                try:
+                    async with aiohttp.ClientSession() as session:
+                        async with session.get(image_url) as resp:
+                            if resp.status == 200:
+                                image_data = await resp.read()
+                                file = discord.File(io.BytesIO(image_data), filename="nova_image.png")
+                                await message.reply(content=reply_text, file=file)
+                            else:
+                                await message.reply(content=reply_text + "\n(عفواً فهد، صار لود عالي على توليد الصورة، جرب مرة ثانية!)")
+                except Exception as ex:
+                    print(f"Image generation error: {ex}")
+                    await message.reply(content=reply_text)
             else:
                 await message.reply(reply_text)
         else:
@@ -143,4 +150,3 @@ async def on_message(message):
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
-
