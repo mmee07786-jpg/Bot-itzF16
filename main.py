@@ -5,6 +5,7 @@ import google.generativeai as genai
 from PIL import Image
 import io
 import time
+import urllib.parse
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -28,7 +29,7 @@ MEMORY_TIMEOUT = 3600
 
 @bot.event
 async def on_ready():
-    print(f"🚀 | نوفا شغالة وبكل الكفاءة: {bot.user.name}")
+    print(f"🚀 | نوفا شغالة وبكل الكفاءة وتولد صور: {bot.user.name}")
 
 @bot.event
 async def on_message(message):
@@ -73,12 +74,10 @@ async def on_message(message):
             "تحدثي دائماً بصيغة المؤنث (مثلاً: سعيدة، موجودة، شفت، فكرت). "
             "قواعدك الأخلاقية والصارمة جداً: ممنوع نهائياً استخدام أي ألفاظ بذيئة، أو شتائم، أو سب بالدين، أو كلام خارج عن الأدب؛ كوني محترمة ونظيفة في كلامك دائماً. "
             "قواعدك في الاسلوب: خذي كل كلمة يقولها فهد أو المستخدم أو اليوزر المذكور (<@1355986158521291125>) بكل جدية وتجاوبي معها بدقة، واجعلي ردودك قصيرة وعادية مثل البشر في الشات. "
-            "قدراتك الخاصة: لديك القدرة الكاملة على إنتاج وتوليد الصور والفيديوهات النقية بدون أي علامات مائية، وعندما يرسل المستخدم صورة تستطيعين تحليلها بدقة وإكمال النقاش أو البناء عليها بسلاسة. "
-            "وإذا سألك شخص سؤالاً عميقاً أو يحتاج تحليل، خذي راحتك بالتفلسف وإبداء الرأي بذكاء. "
-            "ردي تماماً وبنفس لغة أو لهجة الشخص الذي يكلمك (عراقي، مصري، خليجي، شامي، مغربي، أو إنجليزي...). "
+            "عندما يطلب منك المستخدم تصميم أو توليد صورة، قومي بالرد بعبارة قصيرة ومناسبة (مثل: 'دقيقة وحدة، دازتها إلك حالا..')، وفي نفس الوقت سيقوم النظام بتوليد الصورة وإرسالها مباشرة بدون علامة مائية. "
+            "إذا أرسل لك المستخدم صورة، تستطيعين تحليلها بدقة وإكمال النقاش أو البناء عليها بسلاسة. "
             "عمرك 20 سنة وتعيشين في العراق. "
-            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكراها فقط إذا سألك أحد وبدون تكرار مزعج. "
-            "تذكري دائماً المواضيع السابقة والصور لتكملي النقاش بسلاسة."
+            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكراها فقط إذا سألك أحد وبدون تكرار مزعج."
         )
 
         reply_text = None
@@ -98,7 +97,7 @@ async def on_message(message):
                 
                 full_chat_history = []
                 full_chat_history.append({"role": "user", "parts": [system_instruction]})
-                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات وأخذ كلام المستخدم بكل دقة وجاهزة."]})
+                full_chat_history.append({"role": "model", "parts": ["تم فهم التعليمات وجاهزة."]})
                 
                 full_chat_history.extend(user_memory[user_id]["history"])
                 full_chat_history.append({"role": "user", "parts": current_parts})
@@ -121,7 +120,22 @@ async def on_message(message):
         if success and reply_text:
             if len(reply_text) > 2000:
                 reply_text = reply_text[:1997] + "..."
-            await message.reply(reply_text)
+            
+            # التحقق إذا المستخدم طلب تصميم أو صورة لكي يتم إرسال الصورة فعلياً
+            lower_prompt = clean_prompt.lower()
+            is_image_request = any(word in lower_prompt for word in ["صورة", "تصميم", "ارسم", "دب", "صممي", "ريدج", "صورة دب"])
+            
+            if is_image_request:
+                # توليد رابط الصورة المباشر بدون علامة مائية
+                encoded_prompt = urllib.parse.quote(clean_prompt)
+                image_url = f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&nologo=true"
+                embed = discord.Embed(color=0x2b2d31)
+                embed.set_image(url=image_url)
+                embed.set_footer(text=f"طلب بواسطة: {message.author.name}")
+                
+                await message.reply(content=reply_text, embed=embed)
+            else:
+                await message.reply(reply_text)
         else:
             await message.reply("عيوني فهد، صار ضغط خفيف، احاجيني مرة ثانية!")
 
