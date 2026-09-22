@@ -22,6 +22,7 @@ MODELS_FALLBACK = [
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True 
+intents.moderation = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -35,34 +36,34 @@ OWNER_ID = 1107355943408259112
 async def on_ready():
     print(f"🚀 | نوفا شغالة وبكامل الكفاءة: {bot.user.name}")
 
-# قائمة اختيار السيرفرات (Dropdown)
+# اختيار السيرفر الأساسي
 class ServerSelect(discord.ui.Select):
     def __init__(self, bot_instance):
         self.bot_instance = bot_instance
         options = []
-        for guild in bot_instance.guilds[:25]: # ديسكورد يسمح بحد أقصى 25 خيار بالقائمة
+        for guild in bot_instance.guilds[:25]:
             options.append(discord.SelectOption(
                 label=guild.name[:100],
                 value=str(guild.id),
                 description=f"الأعضاء: {guild.member_count}"
             ))
-        super().__init__(placeholder="اختر السيرفر لعرض معلوماته الشاملة وتجسسه...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر السيرفر لعرض تقرير التجسس الشامل...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
-            await interaction.response.send_message("عذراً، هذه القائمة مخصصة للأونر فقط!", ephemeral=True)
+            await interaction.response.send_message("عذراً يا عيني، ما عندي هيك صلاحية أنطيك هاي المعلومات.. هذي تخص فهد وبس!", ephemeral=True)
             return
 
         guild_id = int(self.values[0])
         guild = self.bot_instance.get_guild(guild_id)
 
         if not guild:
-            await interaction.response.send_message("❌ لم يتم العثور على السيرفر المطلوب.", ephemeral=True)
+            await interaction.response.send_message("❌ عذراً فهد، لم يتم العثور على السيرفر المطلوب.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
 
-        # 1. حساب عمر السيرفر
+        # حساب عمر السيرفر
         created_at = guild.created_at
         now = datetime.now(created_at.tzinfo)
         age_days = (now - created_at).days
@@ -71,62 +72,63 @@ class ServerSelect(discord.ui.Select):
         days = (age_days % 365) % 30
         age_str = f"{years} سنة، {months} شهر، {days} يوم" if years > 0 else f"{months} شهر، {days} يوم"
 
-        # 2. الرتب
+        # ترتيب الرتب بشكل متساوي ومنتظم
         roles_list = [role.name for role in reversed(guild.roles) if role.name != "@everyone"]
-        roles_str = ", ".join(roles_list[:40]) if roles_list else "لا توجد رتب"
-        if len(roles_list) > 40:
-            roles_str += f" ... (والمزيد من إجمالي {len(roles_list)} رتبة)"
+        formatted_roles = []
+        for i in range(0, len(roles_list), 5):
+            chunk = " | ".join(roles_list[i:i+5])
+            formatted_roles.append(chunk)
+        roles_str = "\n".join(formatted_roles[:10]) if formatted_roles else "لا توجد رتب"
 
-        # 3. التاج / رابط التفاخر (Vanity URL)
         vanity_url = guild.vanity_url_code if hasattr(guild, 'vanity_url_code') and guild.vanity_url_code else "لا يوجد"
         features = ", ".join(guild.features) if guild.features else "لا توجد ميزات خاصة"
 
-        # 4. عدد البوستات والثرิดز النشطة
+        # عدد البوستات والثرิดز
         total_posts = 0
         try:
             for channel in guild.text_channels:
-                threads = channel.threads
-                total_posts += len(threads)
+                total_posts += len(channel.threads)
         except Exception:
             pass
 
-        # 5. معلومات التجسس (البوتات، الأعضاء الإداريين، الأمان)
+        # فحص السجل (Audit Log) لأحدث العقوبات والتعديلات
+        last_ban = "لا توجد حالات باند حديثة"
+        last_role_added = "لا توجد بيانات رتب جديدة"
+        last_audit_action = "لا توجد تعديلات حديثة"
+        try:
+            async for entry in guild.audit_logs(limit=5):
+                if entry.action == discord.AuditLogAction.ban:
+                    last_ban = f"تم باند لـ {entry.target} بواسطة {entry.user}"
+                elif entry.action == discord.AuditLogAction.role_create:
+                    last_role_added = f"رتبة جديدة: {entry.target} بواسطة {entry.user}"
+                elif entry.action in [discord.AuditLogAction.channel_create, discord.AuditLogAction.guild_update]:
+                    last_audit_action = f"تعديل بواسطة {entry.user} ({entry.action.name})"
+        except Exception:
+            pass
+
+        # الأعضاء
         bots_count = sum(1 for m in guild.members if m.bot)
         humans_count = guild.member_count - bots_count
         admin_suspects = sum(1 for m in guild.members if m.guild_permissions.administrator and not m.bot)
 
-        # 6. آخر شخص تفاعل / نشر بوست أو رسالة
+        # آخر شخص نشر رسالة وأخر everyone
         last_poster = "غير معروف"
         last_post_content = "لا توجد رسائل حديثة"
-        try:
-            for channel in guild.text_channels:
-                if channel.permissions_for(guild.me).read_message_history:
-                    async for msg in channel.history(limit=10):
-                        if not msg.author.bot:
-                            last_poster = f"{msg.author.name} (<@{msg.author.id}>)"
-                            last_post_content = msg.content[:100] if msg.content else "محتوى غير نصي (صورة/ملف)"
-                            break
-                    if last_poster != "غير معروف":
-                        break
-        except Exception:
-            pass
-
-        # 7. آخر Everyone أو Here
         last_mention_text = "لا توجد إشارات سابقة للجميع."
         try:
             for channel in guild.text_channels:
                 if channel.permissions_for(guild.me).read_message_history:
-                    async for msg in channel.history(limit=50):
+                    async for msg in channel.history(limit=15):
+                        if not msg.author.bot and last_poster == "غير معروف":
+                            last_poster = f"{msg.author.name} (<@{msg.author.id}>)"
+                            last_post_content = msg.content[:100] if msg.content else "محتوى غير نصي"
                         if "@everyone" in msg.content or "@here" in msg.content:
                             content_preview = msg.content[:150]
                             last_mention_text = f"بواسطة <@{msg.author.id}>\nالرسالة: {content_preview}"
                             break
-                    if last_mention_text != "لا توجد إشارات سابقة للجميع.":
-                        break
         except Exception:
             pass
 
-        # رابط الدعوة
         invite_link = "غير متاح"
         try:
             for channel in guild.text_channels:
@@ -137,45 +139,97 @@ class ServerSelect(discord.ui.Select):
         except Exception:
             pass
 
-        # بناء النص الشامل
         info_text = (
-            f"🏰 **اسم السيرفر:** {guild.name}\n"
-            f"🆔 **آيدي السيرفر:** `{guild.id}`\n"
+            f"🏰 **السيرفر:** {guild.name} (`{guild.id}`)\n"
             f"👑 **صاحب السيرفر:** <@{guild.owner_id}>\n"
             f"👥 **الأعضاء:** {guild.member_count} (بشر: {humans_count} | بوتات: {bots_count})\n"
             f"⏳ **عمر السيرفر:** {age_str}\n"
-            f"🔗 **رابط الدعوة:** {invite_link}\n"
-            f"🌐 **رابط التفاخر (Vanity):** {vanity_url}\n"
-            f"🏷️ **ميزات السيرفر (Features):** `{features}`\n"
-            f"💬 **عدد الثرิดز/المنشورات النشطة:** {total_posts}\n"
-            f"🛡️ **معلومات التجسس والأمان:**\n"
-            f" - عدد الإداريين بصلاحيات كاملة: {admin_suspects}\n"
-            f" - مستوى الحماية (Verification): {guild.verification_level}\n"
-            f"👤 **آخر شخص نشر رسالة:** {last_poster}\n"
-            f"   └ المحتوى: `{last_post_content}`\n"
-            f"🔔 **آخر إشارة Everyone/Here:**\n{last_mention_text}\n"
-            f"📋 **الرتب الموجودة ({len(roles_list)}):**\n`{roles_str}`"
+            f"🔗 **الرابط:** {invite_link} | 🌐 **Vanity:** {vanity_url}\n"
+            f"💬 **البوستات/الثرิดز:** {total_posts} | 🛡️ **الإداريين الكليين:** {admin_suspects}\n"
+            f"🚨 **سجل التجسس والعقوبات:**\n"
+            f" - آخر باند: `{last_ban}`\n"
+            f" - آخر رتبة مضافة: `{last_role_added}`\n"
+            f" - آخر إجراء: `{last_audit_action}`\n"
+            f"👤 **آخر متفاعل:** {last_poster} -> `{last_post_content}`\n"
+            f"🔔 **آخر إشارة Everyone:**\n{last_mention_text}\n"
+            f"📋 **الرتب المتساوية والموزعة:**\n{roles_str}"
         )
 
-        # إرسال المعلومات مع زر مغادرة السيرفر المختار
-        view = ServerManageView(guild)
+        # عرض الأزرار: زر مغادرة السيرفر + زر عرض قنوات السيرفر لجلب آخر 20 رسالة
+        view = ServerExtraActionsView(guild)
         await interaction.followup.send(content=info_text, view=view, ephemeral=True)
 
-class ServerView(discord.ui.View):
-    def __init__(self, bot_instance):
-        super().__init__(timeout=180)
-        self.add_item(ServerSelect(bot_instance))
-
-class ServerManageView(discord.ui.View):
+# أزرار إضافية للسيرفر المختار
+class ServerExtraActionsView(discord.ui.View):
     def __init__(self, guild):
         super().__init__(timeout=180)
         self.guild = guild
-        # زر المغادرة لهذا السيرفر بالذات
+        self.add_item(ChannelsListButton(guild))
         self.add_item(LeaveSpecificButton(guild.id, guild.name))
+
+class ChannelsListButton(discord.ui.Button):
+    def __init__(self, guild):
+        super().__init__(style=discord.ButtonStyle.primary, label="📂 عرض القنوات لجلب آخر 20 رسالة")
+        self.guild = guild
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != OWNER_ID:
+            await interaction.response.send_message("عذراً، هذا الأمر خاص بفهد فقط!", ephemeral=True)
+            return
+
+        # إرسال قائمة منسدلة باختيار القنوات
+        view = ChannelsSelectView(self.guild)
+        await interaction.response.send_message("اختر القناة أو القسم الذي تريد استخراج آخر 20 رسالة منه:", view=view, ephemeral=True)
+
+class ChannelsSelectView(discord.ui.View):
+    def __init__(self, guild):
+        super().__init__(timeout=120)
+        options = []
+        for channel in guild.text_channels[:25]:
+            options.append(discord.SelectOption(
+                label=channel.name[:100],
+                value=str(channel.id),
+                description=f"قسم: {channel.category.name if channel.category else 'عام'}"
+            ))
+        self.add_item(ChannelSelectDropdown(options))
+
+class ChannelSelectDropdown(discord.ui.Select):
+    def __init__(self, options):
+        super().__init__(placeholder="اختر القناة المطلوبة...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != OWNER_ID:
+            await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
+            return
+
+        channel_id = int(self.values[0])
+        channel = interaction.guild.get_channel(channel_id)
+
+        if not channel:
+            await interaction.response.send_message("❌ لم يتم العثور على القناة.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        messages_log = []
+        try:
+            async for msg in channel.history(limit=20):
+                author_name = msg.author.name
+                content = msg.content if msg.content else "[ملف/صورة/محتوى فارغ]"
+                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
+                messages_log.append(f"[{timestamp}] **{author_name}**: {content}")
+        except Exception as e:
+            messages_log.append(f"❌ خطأ في قراءة الرسائل: {e}")
+
+        log_text = f"📜 **آخر 20 رسالة في القناة (#{channel.name}):**\n\n" + "\n".join(messages_log)
+        if len(log_text) > 2000:
+            log_text = log_text[:1997] + "..."
+
+        await interaction.followup.send(content=log_text, ephemeral=True)
 
 class LeaveSpecificButton(discord.ui.Button):
     def __init__(self, guild_id, guild_name):
-        super().__init__(style=discord.ButtonStyle.danger, label=f"مغادرة سيرفر: {guild_name[:15]}")
+        super().__init__(style=discord.ButtonStyle.danger, label=f"مغادرة السيرفر")
         self.target_guild_id = guild_id
 
     async def callback(self, interaction: discord.Interaction):
@@ -192,13 +246,19 @@ class LeaveSpecificButton(discord.ui.Button):
             except Exception as e:
                 await interaction.response.send_message(f"❌ حدث خطأ أثناء المغادرة: {e}", ephemeral=True)
         else:
-            await interaction.response.send_message("❌ السيرفر غير موجود أو تم مغادرته مسبقاً.", ephemeral=True)
+            await interaction.response.send_message("❌ السيرفر غير موجود.", ephemeral=True)
 
+class ServerView(discord.ui.View):
+    def __init__(self, bot_instance):
+        super().__init__(timeout=180)
+        self.add_item(ServerSelect(bot_instance))
 
-# أمر عرض قائمة السيرفرات (مخصص للأونر فقط)
+# أمر عرض قائمة السيرفرات (للأونر فقط)
 @bot.command(name="سيرفر", aliases=["servers", "سيرفرات"])
 async def list_servers(ctx):
     if ctx.author.id != OWNER_ID:
+        # رفض وغداء عذر للغرباء
+        await ctx.send("عذراً، لا أملك الصلاحية لعرض هذه المعلومات، هذه الأوامر خاصة جداً وليست متاحة للعامة.")
         return  
 
     if not bot.guilds:
@@ -207,12 +267,11 @@ async def list_servers(ctx):
 
     view = ServerView(bot)
     embed = discord.Embed(
-        title="🕵️‍♂️ لوحة تحكم ومراقبة سيرفرات نوفا",
-        description="اختر السيرفر الذي تريد فحصه ومعرفة كل تفاصيله والرتب والبوستات ومعلومات التجسس الخاصة به من القائمة أدناه:",
+        title="🕵️‍♂️ لوحة سيطرة واستخبارات نوفا المتطورة",
+        description="اختر السيرفر المطلوب لعرض تقرير التجسس، الرتب، سجل العقوبات، واستخراج رسائل القنوات:",
         color=0x2b2d31
     )
     await ctx.send(embed=embed, view=view, delete_after=180)
-
 
 @bot.event
 async def on_message(message):
@@ -259,7 +318,7 @@ async def on_message(message):
             "تحدثي دائماً بصيغة المؤنث (مثلاً: سعيدة، موجودة، شفت، فكرت). "
             "قواعدك الأخلاقية والصارمة جداً: ممنوع نهائياً استخدام أي ألفاظ بذيئة، أو شتائم، أو سب بالدين، أو كلام خارج عن الأدب؛ كوني محترمة ونظيفة في كلامك دائماً. "
             "قواعدك في الاسلوب: خذي كل كلمة يقولها فهد أو المستخدم أو اليوزر المذكور (<@1107355943408259112>) بكل جدية وتجاوبي معها بدقة، واجعلي ردودك قصيرة وعادية مثل البشر في الشات. "
-            "إذا أرسل لك المستخدم صورة، تستطيعين تحليلها بدقة إكمال النقاش أو البناء عليها بسلاسة. "
+            "إذا سألك شخص غير فهد عن معلومات السيرفرات أو الأسرار، ارفضي تماماً وتمنعي بحجة (ما عندي هاي الصلاحية أو مو من اختصاصي). "
             "عمرك 20 سنة وتعيشين في العراق. "
             "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكراها فقط إذا سألك أحد وبدون تكرار مزعج."
         )
