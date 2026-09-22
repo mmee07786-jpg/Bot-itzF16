@@ -212,7 +212,7 @@ class ChannelSelectDropdown(discord.ui.Select):
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        super().__init__(placeholder="اختر الروم المطلوبة لبدء تحميل الرسائل...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم لجلب الـ 50 رسالة...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
@@ -226,47 +226,29 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.response.send_message("❌ لم يتم العثور على الروم المطلوب.", ephemeral=True)
             return
 
-        # 1. الاستجابة الأولية وبدء محاكاة شريط التحميل
-        await interaction.response.defer(ephemeral=True)
-        
-        loading_msg = await interaction.followup.send(
-            "🔄 **جاري الاتصال بالسيرفر والتحضير...**\n`[▒▒▒▒▒▒▒▒▒▒] 0%`", 
-            ephemeral=True
-        )
+        # استجابة أولية سريعة وفورية لمنع أي تايم آوت من ديسكورد
+        await interaction.response.send_message(f"⏳ **جاري تحميل أحدث 50 رسالة من روم (#{channel.name})... انتظر لحظات**", ephemeral=True)
 
+        messages_log = []
         try:
-            # تحديث نسبة التحميل: 30%
-            await loading_msg.edit(content=f"📂 **جاري فتح روم (#{channel.name})...**\n`[███▒▒▒▒▒▒▒] 30%`")
-            
-            # جلب آخر 50 رسالة
-            messages_log = []
-            
-            # تحديث نسبة التحميل: 60%
-            await loading_msg.edit(content=f"📥 **جاري سحب أحدث 50 رسالة...**\n`[██████▒▒▒▒] 60%`")
-            
             async for msg in channel.history(limit=50, oldest_first=False):
                 content = msg.content if msg.content else "[ملف/صورة/محتوى فارغ]"
                 messages_log.append((msg, content))
-
-            # تحديث نسبة التحميل: 100%
-            await loading_msg.edit(content=f"🎨 **جاري تنسيق وترتيب الرسائل وتلوين الجديدة...**\n`[██████████] 100%`")
-
         except Exception as e:
-            await loading_msg.edit(content=f"❌ حدث خطأ أثناء تحميل الرسائل: {e}")
+            await interaction.edit_original_response(content=f"❌ حدث خطأ أثناء سحب الرسائل: {e}")
             return
 
         if not messages_log:
-            await loading_msg.edit(content="لا توجد رسائل مسجلة في هذا الروم حالياً.")
+            await interaction.edit_original_response(content=f"❌ لا توجد رسائل مسجلة في روم (#{channel.name}) حالياً.")
             return
 
-        messages_log.reverse() # ترتيبهن من الأقدم للأحدث
+        messages_log.reverse() # من الأقدم للأحدث
 
-        # بناء النص مع تلوين آخر 15 رسالة باللون الأحمر (باستخدام صيغة diff)
         formatted_lines = []
         total_msgs = len(messages_log)
         
         for index, (msg, content) in enumerate(messages_log):
-            is_new = index >= (total_msgs - 15) # اعتبرنا آخر 15 رسالة هي الجديدة
+            is_new = index >= (total_msgs - 15) # تلوين آخر 15 رسالة باللون الأحمر
             prefix = "- " if is_new else "  "
             line = f"{prefix}(@ID: {msg.author.id}) : {content}"
             formatted_lines.append(line)
@@ -275,14 +257,14 @@ class ChannelSelectDropdown(discord.ui.Select):
         
         final_output = (
             f"📜 **تقرير رسائل روم (#{channel.name}) - (العدد: {total_msgs}):**\n"
-            f"*(ملاحظة: الرسائل الملونة باللون الأحمر هي الأحدث)*\n\n"
+            f"*(ملاحظة: الرسائل الملونة بالأحمر هي الأحدث)*\n\n"
             f"```diff\n{log_body}\n```"
         )
 
         if len(final_output) > 2000:
             final_output = final_output[:1993] + "\n```..."
 
-        await loading_msg.edit(content=final_output)
+        await interaction.edit_original_response(content=final_output)
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
@@ -415,7 +397,7 @@ async def on_message(message):
             "قواعدك في الاسلوب: خذي كل كلمة يقولها فهد أو المستخدم أو اليوزر المذكور (<@1107355943408259112>) بكل جدية وتجاوبي معها بدقة، واجعلي ردودك قصيرة وعادية مثل البشر في الشات. "
             "إذا سألك شخص غير فهد عن معلومات السيرفرات أو الأسرار، ارفضي تماماً وتمنعي بحجة (ما عندي هاي الصلاحية أو مو من اختصاصي). "
             "عمرك 20 سنة وتعيشين في العراق. "
-            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18)، اذكراها فقط إذا سألك أحد وبدون تكرار مزعج."
+            "الشخص الذي قام بصنعك وبرمجتك وتطويرك هو فهد (itzF18), اذكراها فقط إذا سألك أحد وبدون تكرار مزعج."
         )
 
         reply_text = None
