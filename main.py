@@ -23,6 +23,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True 
 intents.moderation = True
+intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -116,15 +117,17 @@ class ServerSelect(discord.ui.Select):
         last_mention_text = "لا توجد إشارات سابقة للجميع."
         try:
             for channel in guild.text_channels:
-                if channel.permissions_for(guild.me).read_message_history:
-                    async for msg in channel.history(limit=15):
+                try:
+                    async for msg in channel.history(limit=10):
                         if not msg.author.bot and last_poster == "غير معروف":
                             last_poster = f"{msg.author.name} (<@{msg.author.id}>)"
-                            last_post_content = msg.content[:100] if msg.content else "محتوى غير نصي"
+                            last_post_content = msg.content[:100] if msg.content else "[محتوى غير نصي]"
                         if "@everyone" in msg.content or "@here" in msg.content:
                             content_preview = msg.content[:150]
                             last_mention_text = f"بواسطة <@{msg.author.id}>\nالرسالة: {content_preview}"
                             break
+                except Exception:
+                    continue
         except Exception:
             pass
 
@@ -157,10 +160,9 @@ class ServerSelect(discord.ui.Select):
         view = ServerExtraActionsView(guild)
         await interaction.followup.send(content=info_text, view=view, ephemeral=True)
 
-# أزرار إضافية للسيرفر المختار
 class ServerExtraActionsView(discord.ui.View):
     def __init__(self, guild):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None) # مهلة مفتوحة لضمان سلاسة العمل وعدم التوقف
         self.guild = guild
         self.add_item(ChannelsListButton(guild))
         self.add_item(LeaveSpecificButton(guild.id, guild.name))
@@ -177,14 +179,12 @@ class ChannelsListButton(discord.ui.Button):
 
         await interaction.response.defer(ephemeral=True)
 
-        # جلب كل الرومات النصية بدون فلترة لإظهار كل رومات السيرفر
         all_channels = list(self.guild.text_channels)
         
         if not all_channels:
             await interaction.followup.send("❌ لا توجد أي قنوات نصية في هذا السيرفر.", ephemeral=True)
             return
 
-        # تقسيم القنوات إلى صفحات (كل صفحة 25 قناة كحد أقصى لقائمة ديسكورد)
         pages = []
         current_page = []
         for ch in all_channels:
@@ -197,7 +197,7 @@ class ChannelsListButton(discord.ui.Button):
 
         view = PagedChannelsView(pages, self.guild)
         await interaction.followup.send(
-            f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر القناة المطلوبة من القائمة أدناه لعرض آخر 20 رسالة:",
+            f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر الروم المطلوبة من القائمة أدناه لعرض أحدث الرسائل:",
             view=view,
             ephemeral=True
         )
@@ -212,7 +212,7 @@ class ChannelSelectDropdown(discord.ui.Select):
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        super().__init__(placeholder="اختر الروم المطلوبة...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم المطلوبة لجلب الرسائل...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
@@ -230,15 +230,19 @@ class ChannelSelectDropdown(discord.ui.Select):
 
         messages_log = []
         try:
-            async for msg in channel.history(limit=20):
-                author_name = msg.author.name
+            # بما أن البوت إداري، نقوم بجلب الرسائل مباشرة وبكل سلاسة
+            async for msg in channel.history(limit=25, oldest_first=False):
                 content = msg.content if msg.content else "[ملف/صورة/محتوى فارغ]"
-                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
-                messages_log.append(f"[{timestamp}] **{author_name}**: {content}")
+                messages_log.append(f"(<@{msg.author.id}>) : {content}")
         except Exception as e:
-            messages_log.append(f"❌ عذراً فهد، لا أملك صلاحية قراءة الرسائل في هذا الروم المخفي/الإداري: {e}")
+            messages_log.append(f"❌ خطأ أثناء جلب الرسائل: {e}")
 
-        log_text = f"📜 **آخر 20 رسالة في روم (#{channel.name}):**\n\n" + "\n".join(messages_log)
+        if not messages_log:
+            messages_log.append("لا توجد رسائل مسجلة في هذا الروم حالياً.")
+
+        messages_log.reverse()
+
+        log_text = f"📜 **رسائل روم (#{channel.name}):**\n\n" + "\n".join(messages_log)
         if len(log_text) > 2000:
             log_text = log_text[:1997] + "..."
 
@@ -246,21 +250,16 @@ class ChannelSelectDropdown(discord.ui.Select):
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
-        super().__init__(timeout=120)
+        super().__init__(timeout=None)
         self.pages = pages
         self.guild = guild
         self.current_page_idx = 0
-        
-        # إضافة القائمة المنسدلة للصفحة الأولى
         self.update_view()
 
     def update_view(self):
         self.clear_items()
-        
-        # إضافة القائمة المنسدلة للرومات
         self.add_item(ChannelSelectDropdown(self.pages[self.current_page_idx]))
         
-        # إذا كان هناك أكثر من صفحة (أكثر من 25 روم)، نضيف أزرار التنقل (التالي / السابق)
         if len(self.pages) > 1:
             prev_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="⬅️ الصفحة السابقة", disabled=(self.current_page_idx == 0))
             prev_button.callback = self.prev_page_callback
@@ -311,7 +310,7 @@ class LeaveSpecificButton(discord.ui.Button):
 
 class ServerView(discord.ui.View):
     def __init__(self, bot_instance):
-        super().__init__(timeout=180)
+        super().__init__(timeout=None)
         self.add_item(ServerSelect(bot_instance))
 
 # أمر عرض قائمة السيرفرات (للأونر فقط)
@@ -414,7 +413,7 @@ async def on_message(message):
                     user_memory[user_id]["history"].append({"role": "user", "parts": current_parts})
                     user_memory[user_id]["history"].append({"role": "model", "parts": [reply_text]})
                     
-                    success = True
+                    success = Type = True
                     break
             except Exception as e:
                 print(f"⚠️ خطأ بالموديل {model_name}: {e}")
@@ -429,3 +428,4 @@ async def on_message(message):
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
+
