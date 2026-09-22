@@ -81,7 +81,6 @@ class ServerSelect(discord.ui.Select):
         roles_str = "\n".join(formatted_roles[:10]) if formatted_roles else "لا توجد رتب"
 
         vanity_url = guild.vanity_url_code if hasattr(guild, 'vanity_url_code') and guild.vanity_url_code else "لا يوجد"
-        features = ", ".join(guild.features) if guild.features else "لا توجد ميزات خاصة"
 
         # عدد البوستات والثرิดز
         total_posts = 0
@@ -168,7 +167,7 @@ class ServerExtraActionsView(discord.ui.View):
 
 class ChannelsListButton(discord.ui.Button):
     def __init__(self, guild):
-        super().__init__(style=discord.ButtonStyle.primary, label="📂 عرض كافة القنوات لجلب آخر 20 رسالة")
+        super().__init__(style=discord.ButtonStyle.primary, label="📂 عرض كافة الرومات بدون استثناء")
         self.guild = guild
 
     async def callback(self, interaction: discord.Interaction):
@@ -176,25 +175,44 @@ class ChannelsListButton(discord.ui.Button):
             await interaction.response.send_message("عذراً، هذا الأمر خاص بفهد فقط!", ephemeral=True)
             return
 
-        view = ChannelsSelectView(self.guild)
-        await interaction.response.send_message("اختر أي قناة تريد استخراج آخر 20 رسالة منها (تشمل كافة القنوات المتاحة):", view=view, ephemeral=True)
+        await interaction.response.defer(ephemeral=True)
 
-class ChannelsSelectView(discord.ui.View):
-    def __init__(self, guild):
-        super().__init__(timeout=120)
+        # جلب كل الرومات النصية بدون فلترة لإظهار كل رومات السيرفر
+        all_channels = list(self.guild.text_channels)
+        
+        if not all_channels:
+            await interaction.followup.send("❌ لا توجد أي قنوات نصية في هذا السيرفر.", ephemeral=True)
+            return
+
+        # تقسيم القنوات إلى صفحات (كل صفحة 25 قناة كحد أقصى لقائمة ديسكورد)
+        pages = []
+        current_page = []
+        for ch in all_channels:
+            current_page.append(ch)
+            if len(current_page) == 25:
+                pages.append(current_page)
+                current_page = []
+        if current_page:
+            pages.append(current_page)
+
+        view = PagedChannelsView(pages, self.guild)
+        await interaction.followup.send(
+            f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر القناة المطلوبة من القائمة أدناه لعرض آخر 20 رسالة:",
+            view=view,
+            ephemeral=True
+        )
+
+class ChannelSelectDropdown(discord.ui.Select):
+    def __init__(self, channels_chunk):
         options = []
-        for channel in guild.text_channels[:25]:
-            cat_name = channel.category.name if channel.category else 'قنوات عامة'
+        for channel in channels_chunk:
+            cat_name = channel.category.name if channel.category else 'بدون قسم'
             options.append(discord.SelectOption(
                 label=channel.name[:100],
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        self.add_item(ChannelSelectDropdown(options))
-
-class ChannelSelectDropdown(discord.ui.Select):
-    def __init__(self, options):
-        super().__init__(placeholder="اختر القناة المطلوبة...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم المطلوبة...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
@@ -205,7 +223,7 @@ class ChannelSelectDropdown(discord.ui.Select):
         channel = interaction.guild.get_channel(channel_id)
 
         if not channel:
-            await interaction.response.send_message("❌ لم يتم العثور على القناة.", ephemeral=True)
+            await interaction.response.send_message("❌ لم يتم العثور على الروم المطلوب.", ephemeral=True)
             return
 
         await interaction.response.defer(ephemeral=True)
@@ -218,13 +236,57 @@ class ChannelSelectDropdown(discord.ui.Select):
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
                 messages_log.append(f"[{timestamp}] **{author_name}**: {content}")
         except Exception as e:
-            messages_log.append(f"❌ خطأ في قراءة الرسائل (قد تكون الصلاحيات مقيدة): {e}")
+            messages_log.append(f"❌ عذراً فهد، لا أملك صلاحية قراءة الرسائل في هذا الروم المخفي/الإداري: {e}")
 
-        log_text = f"📜 **آخر 20 رسالة تم كتابتها في القناة (#{channel.name}):**\n\n" + "\n".join(messages_log)
+        log_text = f"📜 **آخر 20 رسالة في روم (#{channel.name}):**\n\n" + "\n".join(messages_log)
         if len(log_text) > 2000:
             log_text = log_text[:1997] + "..."
 
         await interaction.followup.send(content=log_text, ephemeral=True)
+
+class PagedChannelsView(discord.ui.View):
+    def __init__(self, pages, guild):
+        super().__init__(timeout=120)
+        self.pages = pages
+        self.guild = guild
+        self.current_page_idx = 0
+        
+        # إضافة القائمة المنسدلة للصفحة الأولى
+        self.update_view()
+
+    def update_view(self):
+        self.clear_items()
+        
+        # إضافة القائمة المنسدلة للرومات
+        self.add_item(ChannelSelectDropdown(self.pages[self.current_page_idx]))
+        
+        # إذا كان هناك أكثر من صفحة (أكثر من 25 روم)، نضيف أزرار التنقل (التالي / السابق)
+        if len(self.pages) > 1:
+            prev_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="⬅️ الصفحة السابقة", disabled=(self.current_page_idx == 0))
+            prev_button.callback = self.prev_page_callback
+            self.add_item(prev_button)
+
+            next_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="الصفحة التالية ➡️", disabled=(self.current_page_idx == len(self.pages) - 1))
+            next_button.callback = self.next_page_callback
+            self.add_item(next_button)
+
+    async def prev_page_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != OWNER_ID:
+            await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
+            return
+        if self.current_page_idx > 0:
+            self.current_page_idx -= 1
+            self.update_view()
+            await interaction.response.edit_message(view=self)
+
+    async def next_page_callback(self, interaction: discord.Interaction):
+        if interaction.user.id != OWNER_ID:
+            await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
+            return
+        if self.current_page_idx < len(self.pages) - 1:
+            self.current_page_idx += 1
+            self.update_view()
+            await interaction.response.edit_message(view=self)
 
 class LeaveSpecificButton(discord.ui.Button):
     def __init__(self, guild_id, guild_name):
@@ -367,4 +429,3 @@ async def on_message(message):
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
-
