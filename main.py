@@ -155,7 +155,6 @@ class ServerSelect(discord.ui.Select):
             f"📋 **الرتب المتساوية والموزعة:**\n{roles_str}"
         )
 
-        # عرض الأزرار: زر مغادرة السيرفر + زر عرض قنوات السيرفر لجلب آخر 20 رسالة
         view = ServerExtraActionsView(guild)
         await interaction.followup.send(content=info_text, view=view, ephemeral=True)
 
@@ -169,7 +168,7 @@ class ServerExtraActionsView(discord.ui.View):
 
 class ChannelsListButton(discord.ui.Button):
     def __init__(self, guild):
-        super().__init__(style=discord.ButtonStyle.primary, label="📂 عرض القنوات لجلب آخر 20 رسالة")
+        super().__init__(style=discord.ButtonStyle.primary, label="📂 عرض كافة القنوات لجلب آخر 20 رسالة")
         self.guild = guild
 
     async def callback(self, interaction: discord.Interaction):
@@ -177,19 +176,19 @@ class ChannelsListButton(discord.ui.Button):
             await interaction.response.send_message("عذراً، هذا الأمر خاص بفهد فقط!", ephemeral=True)
             return
 
-        # إرسال قائمة منسدلة باختيار القنوات
         view = ChannelsSelectView(self.guild)
-        await interaction.response.send_message("اختر القناة أو القسم الذي تريد استخراج آخر 20 رسالة منه:", view=view, ephemeral=True)
+        await interaction.response.send_message("اختر أي قناة تريد استخراج آخر 20 رسالة منها (تشمل كافة القنوات المتاحة):", view=view, ephemeral=True)
 
 class ChannelsSelectView(discord.ui.View):
     def __init__(self, guild):
         super().__init__(timeout=120)
         options = []
         for channel in guild.text_channels[:25]:
+            cat_name = channel.category.name if channel.category else 'قنوات عامة'
             options.append(discord.SelectOption(
                 label=channel.name[:100],
                 value=str(channel.id),
-                description=f"قسم: {channel.category.name if channel.category else 'عام'}"
+                description=f"القسم: {cat_name[:50]}"
             ))
         self.add_item(ChannelSelectDropdown(options))
 
@@ -219,9 +218,9 @@ class ChannelSelectDropdown(discord.ui.Select):
                 timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
                 messages_log.append(f"[{timestamp}] **{author_name}**: {content}")
         except Exception as e:
-            messages_log.append(f"❌ خطأ في قراءة الرسائل: {e}")
+            messages_log.append(f"❌ خطأ في قراءة الرسائل (قد تكون الصلاحيات مقيدة): {e}")
 
-        log_text = f"📜 **آخر 20 رسالة في القناة (#{channel.name}):**\n\n" + "\n".join(messages_log)
+        log_text = f"📜 **آخر 20 رسالة تم كتابتها في القناة (#{channel.name}):**\n\n" + "\n".join(messages_log)
         if len(log_text) > 2000:
             log_text = log_text[:1997] + "..."
 
@@ -257,7 +256,6 @@ class ServerView(discord.ui.View):
 @bot.command(name="سيرفر", aliases=["servers", "سيرفرات"])
 async def list_servers(ctx):
     if ctx.author.id != OWNER_ID:
-        # رفض وغداء عذر للغرباء
         await ctx.send("عذراً، لا أملك الصلاحية لعرض هذه المعلومات، هذه الأوامر خاصة جداً وليست متاحة للعامة.")
         return  
 
