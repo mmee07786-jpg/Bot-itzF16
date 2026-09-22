@@ -162,7 +162,7 @@ class ServerSelect(discord.ui.Select):
 
 class ServerExtraActionsView(discord.ui.View):
     def __init__(self, guild):
-        super().__init__(timeout=None) # مهلة مفتوحة لضمان سلاسة العمل وعدم التوقف
+        super().__init__(timeout=None)
         self.guild = guild
         self.add_item(ChannelsListButton(guild))
         self.add_item(LeaveSpecificButton(guild.id, guild.name))
@@ -212,7 +212,7 @@ class ChannelSelectDropdown(discord.ui.Select):
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        super().__init__(placeholder="اختر الروم المطلوبة لجلب الرسائل...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم المطلوبة لبدء تحميل الرسائل...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
@@ -226,27 +226,63 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.response.send_message("❌ لم يتم العثور على الروم المطلوب.", ephemeral=True)
             return
 
+        # 1. الاستجابة الأولية وبدء محاكاة شريط التحميل
         await interaction.response.defer(ephemeral=True)
+        
+        loading_msg = await interaction.followup.send(
+            "🔄 **جاري الاتصال بالسيرفر والتحضير...**\n`[▒▒▒▒▒▒▒▒▒▒] 0%`", 
+            ephemeral=True
+        )
 
-        messages_log = []
         try:
-            # بما أن البوت إداري، نقوم بجلب الرسائل مباشرة وبكل سلاسة
-            async for msg in channel.history(limit=25, oldest_first=False):
+            # تحديث نسبة التحميل: 30%
+            await loading_msg.edit(content=f"📂 **جاري فتح روم (#{channel.name})...**\n`[███▒▒▒▒▒▒▒] 30%`")
+            
+            # جلب آخر 50 رسالة
+            messages_log = []
+            
+            # تحديث نسبة التحميل: 60%
+            await loading_msg.edit(content=f"📥 **جاري سحب أحدث 50 رسالة...**\n`[██████▒▒▒▒] 60%`")
+            
+            async for msg in channel.history(limit=50, oldest_first=False):
                 content = msg.content if msg.content else "[ملف/صورة/محتوى فارغ]"
-                messages_log.append(f"(<@{msg.author.id}>) : {content}")
+                messages_log.append((msg, content))
+
+            # تحديث نسبة التحميل: 100%
+            await loading_msg.edit(content=f"🎨 **جاري تنسيق وترتيب الرسائل وتلوين الجديدة...**\n`[██████████] 100%`")
+
         except Exception as e:
-            messages_log.append(f"❌ خطأ أثناء جلب الرسائل: {e}")
+            await loading_msg.edit(content=f"❌ حدث خطأ أثناء تحميل الرسائل: {e}")
+            return
 
         if not messages_log:
-            messages_log.append("لا توجد رسائل مسجلة في هذا الروم حالياً.")
+            await loading_msg.edit(content="لا توجد رسائل مسجلة في هذا الروم حالياً.")
+            return
 
-        messages_log.reverse()
+        messages_log.reverse() # ترتيبهن من الأقدم للأحدث
 
-        log_text = f"📜 **رسائل روم (#{channel.name}):**\n\n" + "\n".join(messages_log)
-        if len(log_text) > 2000:
-            log_text = log_text[:1997] + "..."
+        # بناء النص مع تلوين آخر 15 رسالة باللون الأحمر (باستخدام صيغة diff)
+        formatted_lines = []
+        total_msgs = len(messages_log)
+        
+        for index, (msg, content) in enumerate(messages_log):
+            is_new = index >= (total_msgs - 15) # اعتبرنا آخر 15 رسالة هي الجديدة
+            prefix = "- " if is_new else "  "
+            line = f"{prefix}(@ID: {msg.author.id}) : {content}"
+            formatted_lines.append(line)
 
-        await interaction.followup.send(content=log_text, ephemeral=True)
+        log_body = "\n".join(formatted_lines)
+        
+        final_output = (
+            f"📜 **تقرير رسائل روم (#{channel.name}) - (العدد: {total_msgs}):**\n"
+            f"*(ملاحظة: الرسائل الملونة باللون الأحمر هي الأحدث)*\n\n"
+            f"```diff\n{log_body}\n```"
+        )
+
+        if len(final_output) > 2000:
+            final_output = final_output[:1993] + "\n```..."
+
+        await loading_msg.edit(content=final_output)
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
@@ -413,7 +449,7 @@ async def on_message(message):
                     user_memory[user_id]["history"].append({"role": "user", "parts": current_parts})
                     user_memory[user_id]["history"].append({"role": "model", "parts": [reply_text]})
                     
-                    success = Type = True
+                    success = True
                     break
             except Exception as e:
                 print(f"⚠️ خطأ بالموديل {model_name}: {e}")
