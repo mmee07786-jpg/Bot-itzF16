@@ -42,7 +42,6 @@ class ServerSelect(discord.ui.Select):
     def __init__(self, bot_instance):
         self.bot_instance = bot_instance
         options = []
-        # جلب أول 25 سيرفر مع حماية الأسماء الطويلة
         for guild in bot_instance.guilds[:25]:
             options.append(discord.SelectOption(
                 label=guild.name[:100],
@@ -56,7 +55,7 @@ class ServerSelect(discord.ui.Select):
             await interaction.response.send_message("عذراً يا عيني، ما عندي هيك صلاحية أنطيك هاي المعلومات.. هذي تخص فهد وبس!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية لمنع خطأ Interaction Failed للسيرفرات الكبيرة
+        # استجابة مؤجلة فورية لمنع خطأ Interaction Failed
         await interaction.response.defer(ephemeral=True)
 
         guild_id = int(self.values[0])
@@ -66,7 +65,6 @@ class ServerSelect(discord.ui.Select):
             await interaction.followup.send("❌ عذراً فهد، لم يتم العثور على السيرفر المطلوب.", ephemeral=True)
             return
 
-        # حساب عمر السيرفر
         created_at = guild.created_at
         now = datetime.now(created_at.tzinfo)
         age_days = (now - created_at).days
@@ -75,7 +73,6 @@ class ServerSelect(discord.ui.Select):
         days = (age_days % 365) % 30
         age_str = f"{years} سنة، {months} شهر، {days} يوم" if years > 0 else f"{months} شهر، {days} يوم"
 
-        # ترتيب الرتب بشكل متساوي ومنتظم
         roles_list = [role.name for role in reversed(guild.roles) if role.name != "@everyone"]
         formatted_roles = []
         for i in range(0, len(roles_list), 5):
@@ -85,7 +82,6 @@ class ServerSelect(discord.ui.Select):
 
         vanity_url = guild.vanity_url_code if hasattr(guild, 'vanity_url_code') and guild.vanity_url_code else "لا يوجد"
 
-        # عدد البوستات والثرิดز
         total_posts = 0
         try:
             for channel in guild.text_channels:
@@ -93,7 +89,6 @@ class ServerSelect(discord.ui.Select):
         except Exception:
             pass
 
-        # فحص السجل (Audit Log) لأحدث العقوبات والتعديلات
         last_ban = "لا توجد حالات باند حديثة"
         last_role_added = "لا توجد بيانات رتب جديدة"
         last_audit_action = "لا توجد تعديلات حديثة"
@@ -108,12 +103,10 @@ class ServerSelect(discord.ui.Select):
         except Exception:
             pass
 
-        # الأعضاء
         bots_count = sum(1 for m in guild.members if m.bot)
         humans_count = guild.member_count - bots_count
         admin_suspects = sum(1 for m in guild.members if m.guild_permissions.administrator and not m.bot)
 
-        # آخر شخص نشر رسالة وأخر everyone
         last_poster = "غير معروف"
         last_post_content = "لا توجد رسائل حديثة"
         last_mention_text = "لا توجد إشارات سابقة للجميع."
@@ -179,7 +172,6 @@ class ChannelsListButton(discord.ui.Button):
             await interaction.response.send_message("عذراً، هذا الأمر خاص بفهد فقط!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية لضمان عدم حدوث خطأ بالسيرفرات الكبيرة
         await interaction.response.defer(ephemeral=True)
 
         all_channels = list(self.guild.text_channels)
@@ -222,7 +214,7 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية حتى لو أخذ سحب الرسائل وقتاً طويلاً
+        # استجابة مؤجلة فورية لمنع التعليق نهائياً عند اختيار الروم
         await interaction.response.defer(ephemeral=True)
 
         channel_id = int(self.values[0])
@@ -245,13 +237,13 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.followup.send(f"❌ لا توجد رسائل مسجلة في روم (#{channel.name}) حالياً.", ephemeral=True)
             return
 
-        messages_log.reverse() # من الأقدم للأحدث
+        messages_log.reverse()
 
         formatted_lines = []
         total_msgs = len(messages_log)
         
         for index, (msg, content) in enumerate(messages_log):
-            is_new = index >= (total_msgs - 15) # تلوين آخر 15 رسالة باللون الأحمر
+            is_new = index >= (total_msgs - 15)
             prefix = "- " if is_new else "  "
             line = f"{prefix}(@ID: {msg.author.id}) : {content}"
             formatted_lines.append(line)
@@ -260,7 +252,7 @@ class ChannelSelectDropdown(discord.ui.Select):
         
         final_output = (
             f"📜 **تقرير رسائل روم (#{channel.name}) - (العدد: {total_msgs}):**\n"
-            f"*(ملاحظة: الرسائل الملونة بالأحمر هي الأحدث)*\n\n"
+            f"*(ملاحظة: الرسائل الملونة بالأحمر/المميزة هي الأحدث)*\n\n"
             f"```diff\n{log_body}\n```"
         )
 
@@ -335,7 +327,6 @@ class ServerView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(ServerSelect(bot_instance))
 
-# أمر عرض قائمة السيرفرات (للأونر فقط)
 @bot.command(name="سيرفر", aliases=["servers", "سيرفرات"])
 async def list_servers(ctx):
     if ctx.author.id != OWNER_ID:
