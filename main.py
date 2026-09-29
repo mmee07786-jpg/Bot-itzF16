@@ -37,11 +37,12 @@ OWNER_ID = 1107355943408259112
 async def on_ready():
     print(f"🚀 | نوفا شغالة وبكامل الكفاءة: {bot.user.name}")
 
-# اختيار السيرفر الأساسي
+# اختيار السيرفر الأساسي (مع دعم السيرفرات الكبيرة وتجاوز الحدود)
 class ServerSelect(discord.ui.Select):
     def __init__(self, bot_instance):
         self.bot_instance = bot_instance
         options = []
+        # جلب أول 25 سيرفر مع حماية الأسماء الطويلة
         for guild in bot_instance.guilds[:25]:
             options.append(discord.SelectOption(
                 label=guild.name[:100],
@@ -55,14 +56,15 @@ class ServerSelect(discord.ui.Select):
             await interaction.response.send_message("عذراً يا عيني، ما عندي هيك صلاحية أنطيك هاي المعلومات.. هذي تخص فهد وبس!", ephemeral=True)
             return
 
+        # استجابة مؤجلة فورية لمنع خطأ Interaction Failed للسيرفرات الكبيرة
+        await interaction.response.defer(ephemeral=True)
+
         guild_id = int(self.values[0])
         guild = self.bot_instance.get_guild(guild_id)
 
         if not guild:
-            await interaction.response.send_message("❌ عذراً فهد، لم يتم العثور على السيرفر المطلوب.", ephemeral=True)
+            await interaction.followup.send("❌ عذراً فهد، لم يتم العثور على السيرفر المطلوب.", ephemeral=True)
             return
-
-        await interaction.response.defer(ephemeral=True)
 
         # حساب عمر السيرفر
         created_at = guild.created_at
@@ -177,6 +179,7 @@ class ChannelsListButton(discord.ui.Button):
             await interaction.response.send_message("عذراً، هذا الأمر خاص بفهد فقط!", ephemeral=True)
             return
 
+        # استجابة مؤجلة فورية لضمان عدم حدوث خطأ بالسيرفرات الكبيرة
         await interaction.response.defer(ephemeral=True)
 
         all_channels = list(self.guild.text_channels)
@@ -219,15 +222,15 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
             return
 
+        # استجابة مؤجلة فورية حتى لو أخذ سحب الرسائل وقتاً طويلاً
+        await interaction.response.defer(ephemeral=True)
+
         channel_id = int(self.values[0])
         channel = interaction.guild.get_channel(channel_id)
 
         if not channel:
-            await interaction.response.send_message("❌ لم يتم العثور على الروم المطلوب.", ephemeral=True)
+            await interaction.followup.send("❌ لم يتم العثور على الروم المطلوب.", ephemeral=True)
             return
-
-        # استجابة أولية سريعة وفورية لمنع أي تايم آوت من ديسكورد
-        await interaction.response.send_message(f"⏳ **جاري تحميل أحدث 50 رسالة من روم (#{channel.name})... انتظر لحظات**", ephemeral=True)
 
         messages_log = []
         try:
@@ -235,11 +238,11 @@ class ChannelSelectDropdown(discord.ui.Select):
                 content = msg.content if msg.content else "[ملف/صورة/محتوى فارغ]"
                 messages_log.append((msg, content))
         except Exception as e:
-            await interaction.edit_original_response(content=f"❌ حدث خطأ أثناء سحب الرسائل: {e}")
+            await interaction.followup.send(f"❌ حدث خطأ أثناء سحب الرسائل: {e}", ephemeral=True)
             return
 
         if not messages_log:
-            await interaction.edit_original_response(content=f"❌ لا توجد رسائل مسجلة في روم (#{channel.name}) حالياً.")
+            await interaction.followup.send(f"❌ لا توجد رسائل مسجلة في روم (#{channel.name}) حالياً.", ephemeral=True)
             return
 
         messages_log.reverse() # من الأقدم للأحدث
@@ -264,7 +267,7 @@ class ChannelSelectDropdown(discord.ui.Select):
         if len(final_output) > 2000:
             final_output = final_output[:1993] + "\n```..."
 
-        await interaction.edit_original_response(content=final_output)
+        await interaction.followup.send(content=final_output, ephemeral=True)
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
@@ -315,16 +318,17 @@ class LeaveSpecificButton(discord.ui.Button):
             await interaction.response.send_message("عذراً، هذا الزر مخصص للأونر فقط!", ephemeral=True)
             return
 
+        await interaction.response.defer(ephemeral=True)
         guild = interaction.client.get_guild(self.target_guild_id)
         if guild:
             name = guild.name
             try:
                 await guild.leave()
-                await interaction.response.send_message(f"✅ تم مغادرة السيرفر (**{name}**) بنجاح.", ephemeral=True)
+                await interaction.followup.send(f"✅ تم مغادرة السيرفر (**{name}**) بنجاح.", ephemeral=True)
             except Exception as e:
-                await interaction.response.send_message(f"❌ حدث خطأ أثناء المغادرة: {e}", ephemeral=True)
+                await interaction.followup.send(f"❌ حدث خطأ أثناء المغادرة: {e}", ephemeral=True)
         else:
-            await interaction.response.send_message("❌ السيرفر غير موجود.", ephemeral=True)
+            await interaction.followup.send("❌ السيرفر غير موجود.", ephemeral=True)
 
 class ServerView(discord.ui.View):
     def __init__(self, bot_instance):
@@ -446,4 +450,3 @@ async def on_message(message):
 
 if __name__ == "__main__":
     bot.run(DISCORD_TOKEN)
-
