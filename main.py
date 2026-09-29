@@ -207,14 +207,14 @@ class ChannelSelectDropdown(discord.ui.Select):
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        super().__init__(placeholder="اختر الروم لجلب الـ 50 رسالة...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم لجلب الرسائل (قديم و جديد)...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
             await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية لمنع التعليق نهائياً عند اختيار الروم
+        # استجابة مؤجلة فورية لمنع التعليق
         await interaction.response.defer(ephemeral=True)
 
         channel_id = int(self.values[0])
@@ -226,9 +226,19 @@ class ChannelSelectDropdown(discord.ui.Select):
 
         messages_log = []
         try:
-            async for msg in channel.history(limit=50, oldest_first=False):
-                content = msg.content if msg.content else "[ملف/صورة/محتوى فارغ]"
-                messages_log.append((msg, content))
+            # جلب الرسائل (من الأقدم للأحدث: قديم وجديد)
+            async for msg in channel.history(limit=40, oldest_first=True):
+                author_name = msg.author.name
+                if msg.webhook_id:
+                    author_name = f"[WebHook] {msg.author.name}"
+                
+                # تنسيق التاريخ والوقت ليظهر بين قوسين بجانب الاسم
+                msg_time = msg.created_at.strftime('%Y-%m-%d %H:%M')
+                
+                content = msg.content if msg.content else "[محتوى ميديا / امبد / فارغ]"
+                
+                line = f"{author_name} ({msg_time}) [@ID: {msg.author.id}] :\n{content}\n---\n"
+                messages_log.append(line)
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ أثناء سحب الرسائل: {e}", ephemeral=True)
             return
@@ -237,29 +247,24 @@ class ChannelSelectDropdown(discord.ui.Select):
             await interaction.followup.send(f"❌ لا توجد رسائل مسجلة في روم (#{channel.name}) حالياً.", ephemeral=True)
             return
 
-        messages_log.reverse()
-
-        formatted_lines = []
-        total_msgs = len(messages_log)
+        # تقسيم الأجزاء لتجنب تجاوز حد 2000 حرف في ديسكورد وضمان ظهورها بالكامل
+        chunks = []
+        current_chunk = f"📜 **سجل رسائل روم (#{channel.name}) (قديم وجديد):**\n\n```text\n"
         
-        for index, (msg, content) in enumerate(messages_log):
-            is_new = index >= (total_msgs - 15)
-            prefix = "- " if is_new else "  "
-            line = f"{prefix}(@ID: {msg.author.id}) : {content}"
-            formatted_lines.append(line)
-
-        log_body = "\n".join(formatted_lines)
+        for line in messages_log:
+            if len(current_chunk) + len(line) + 4 > 1995:
+                current_chunk += "```"
+                chunks.append(current_chunk)
+                current_chunk = "```text\n" + line
+            else:
+                current_chunk += line
         
-        final_output = (
-            f"📜 **تقرير رسائل روم (#{channel.name}) - (العدد: {total_msgs}):**\n"
-            f"*(ملاحظة: الرسائل الملونة بالأحمر/المميزة هي الأحدث)*\n\n"
-            f"```diff\n{log_body}\n```"
-        )
+        if current_chunk != "```text\n":
+            current_chunk += "```"
+            chunks.append(current_chunk)
 
-        if len(final_output) > 2000:
-            final_output = final_output[:1993] + "\n```..."
-
-        await interaction.followup.send(content=final_output, ephemeral=True)
+        for chunk in chunks:
+            await interaction.followup.send(content=chunk, ephemeral=True)
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
