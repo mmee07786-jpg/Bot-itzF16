@@ -1,6 +1,5 @@
 import os
 import discord
-from discord import app_commands
 from discord.ext import commands
 import google.generativeai as genai
 from PIL import Image
@@ -28,7 +27,6 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-user_image_cooldowns = {}
 user_memory = {}
 MEMORY_TIMEOUT = 3600
 OWNER_ID = 1107355943408259112
@@ -41,60 +39,6 @@ async def on_ready():
     except Exception as e:
         print(f"⚠️ فشل مزامنة الأوامر: {e}")
     print(f"🚀 | نوفا شغالة وبكامل الكفاءة: {bot.user.name}")
-
-# ================= أمر توليد الصور باستخدام Google Gemini / Imagen =================
-@bot.tree.command(name="nova", description="توليد صورة بالذكاء الاصطناعي عبر بوت نوفا وجيميناي")
-@app_commands.describe(prompt="صف الصورة التي تريد توليدها...")
-async def nova_image(interaction: discord.Interaction, prompt: str):
-    user_id = interaction.user.id
-    current_time = time.time()
-    cooldown_time = 10  # 10 ثوانٍ
-
-    if user_id in user_image_cooldowns:
-        elapsed_time = current_time - user_image_cooldowns[user_id]
-        if elapsed_time < cooldown_time:
-            time_left = round(cooldown_time - elapsed_time, 1)
-            await interaction.response.send_message(
-                f"⏳ يا هلا! عليك الانتظار **{time_left} ثوانٍ** قبل طلب صورة أخرى.",
-                ephemeral=True
-            )
-            return
-
-    user_image_cooldowns[user_id] = current_time
-    await interaction.response.defer()
-
-    try:
-        # استخدام موديل Imagen الخاص بتوليد الصور من جوجل
-        image_model = genai.GenerativeModel('imagen-3.0-generate-002')
-        result = image_model.generate_content(prompt)
-        
-        # استخراج الصورة وإرسالها
-        image_bytes = None
-        for part in result.candidates[0].content.parts:
-            if hasattr(part, 'inline_data') and part.inline_data:
-                image_bytes = part.inline_data.data
-                break
-
-        if image_bytes:
-            image_file = discord.File(io.BytesIO(image_bytes), filename="nova_image.png")
-            embed = discord.Embed(
-                title="🎨 تم توليد الصورة بنجاح بواسطة نوفا",
-                description=f"**الوصف:** `{prompt}`",
-                color=discord.Color.blurple()
-            )
-            embed.set_image(url="attachment://nova_image.png")
-            embed.set_footer(text=f"طلب بواسطة: {interaction.user}", icon_url=interaction.user.display_avatar.url)
-
-            await interaction.followup.send(embed=embed, file=image_file)
-        else:
-            await interaction.followup.send("⚠️ عذراً، لم يتمكن جيميناي من استخراج الصورة، جرب وصفاً آخر.")
-
-    except Exception as e:
-        print(f"خطأ في توليد الصورة عبر جيميناي: {e}")
-        await interaction.followup.send(
-            "⚠️ عذراً، واجهت نوفا مشكلة مؤقتة في توليد الصورة. تأكد من أن الوصف مدعوم أو جرب محاولة أخرى لاحقاً."
-        )
-# =================================================================================
 
 class ServerSelect(discord.ui.Select):
     def __init__(self, bot_instance):
@@ -355,7 +299,7 @@ class PagedChannelsView(discord.ui.View):
         self.add_item(ChannelSelectDropdown(self.pages[self.current_page_idx]))
         
         if len(self.pages) > 1:
-            prev_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="⬅️ الصفحة السابقة", disabled=(self.current_page_idx == 0))
+            prev_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="⬅️️ الصفحة السابقة", disabled=(self.current_page_idx == 0))
             prev_button.callback = self.prev_page_callback
             self.add_item(prev_button)
 
@@ -421,7 +365,7 @@ async def list_servers(ctx):
 
     view = ServerView(bot)
     embed = discord.Embed(
-        title="🕵️️‍♂️ لوحة سيطرة واستخبارات نوفا المتطورة",
+        title="🕵️‍♂️ لوحة سيطرة واستخبارات نوفا المتطورة",
         description="اختر السيرفر المطلوب ليصلك تقرير التجسس ورسائل القنوات مباشرة إلى **رسائلك الخاصة (DM)**:",
         color=0x2b2d31
     )
