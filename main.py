@@ -1,16 +1,20 @@
 import os
 import discord
+from discord import app_commands
 from discord.ext import commands
 import google.generativeai as genai
 from PIL import Image
 import io
 import time
 from datetime import datetime, timedelta, timezone
+import openai # تمت إضافة مكتبة OpenAI لتوليد الصور
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") # مفتاح OpenAI لتوليد الصور
 
 genai.configure(api_key=GEMINI_API_KEY)
+openai.api_key = OPENAI_API_KEY # إعداد مفتاح OpenAI
 
 MODELS_FALLBACK = [
     "gemini-2.5-flash",
@@ -27,6 +31,8 @@ intents.guilds = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# قاموس لتتبع وقت الـ Cooldown الخاص بتوليد الصور (10 ثوانٍ)
+user_image_cooldowns = {}
 user_memory = {}
 MEMORY_TIMEOUT = 3600
 
@@ -35,7 +41,71 @@ OWNER_ID = 1107355943408259112
 
 @bot.event
 async def on_ready():
+    try:
+        # مزامنة أوامر السلاش (Slash Commands) لكي يظهر أمر /nova image
+        await bot.tree.sync()
+        print("🔄 تم مزامنة أوامر السلاش بنجاح.")
+    except Exception as e:
+        print(f"⚠️ فشل مزامنة الأوامر: {e}")
     print(f"🚀 | نوفا شغالة وبكامل الكفاءة: {bot.user.name}")
+
+# ================= دمج أمر السلاش /nova image (بدون تخريب أي شيء) =================
+@bot.tree.group(name="nova", description="أوامر بوت نوفا")
+async def nova(interaction: discord.Interaction):
+    pass
+
+@nova.command(name="image", description="توليد صورة بالذكاء الاصطناعي")
+@app_commands.describe(prompt="صف الصورة التي تريد توليدها...")
+async def image(interaction: discord.Interaction, prompt: str):
+    user_id = interaction.user.id
+    current_time = time.time()
+    cooldown_time = 10  # 10 ثوانٍ
+
+    # فحص الـ Cooldown لكل مستخدم
+    if user_id in user_image_cooldowns:
+        elapsed_time = current_time - user_image_cooldowns[user_id]
+        if elapsed_time < cooldown_time:
+            time_left = round(cooldown_time - elapsed_time, 1)
+            await interaction.response.send_message(
+                f"⏳ يا هلا! عليك الانتظار **{time_left} ثوانٍ** قبل طلب صورة أخرى.",
+                ephemeral=True
+            )
+            return
+
+    # تحديث وقت الاستخدام
+    user_image_cooldowns[user_id] = current_time
+
+    # الرد بشكل مؤقت لأن توليد الصورة يأخذ ثوانٍ
+    await interaction.response.defer()
+
+    try:
+        # توليد الصورة باستخدام DALL-E 3
+        response = openai.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            n=1,
+            size="1024x1024"
+        )
+        
+        image_url = response.data[0].url
+
+        # بناء رسالة أنيقة Embed لعرض الصورة
+        embed = discord.Embed(
+            title="🎨 تم توليد الصورة بنجاح بواسطة نوفا",
+            description=f"**الوصف:** `{prompt}`",
+            color=discord.Color.blurple()
+        )
+        embed.set_image(url=image_url)
+        embed.set_footer(text=f"طلب بواسطة: {interaction.user}", icon_url=interaction.user.display_avatar.url)
+
+        await interaction.followup.send(embed=embed)
+
+    except Exception as e:
+        print(f"خطأ في توليد الصورة: {e}")
+        await interaction.followup.send(
+            "⚠️ عذراً، واجهت نوفا مشكلة مؤقتة أثناء رسم الصورة. يرجى تجربة وصف مختلف والمحاولة لاحقاً."
+        )
+# =================================================================================
 
 class ServerSelect(discord.ui.Select):
     def __init__(self, bot_instance):
@@ -236,7 +306,6 @@ class ChannelSelectDropdown(discord.ui.Select):
 
         messages_log = []
         try:
-            # شروط الوقت: أكثر من 3 دقائق (حتى يكملون حجي) وإلى حد أقصى 10 أيام بالماضي
             now = datetime.now(timezone.utc)
             after_time = now - timedelta(days=10)
             before_time = now - timedelta(minutes=3)
