@@ -143,7 +143,7 @@ class ServerSelect(discord.ui.Select):
             f"👥 **الأعضاء:** {guild.member_count} (بشر: {humans_count} | بوتات: {bots_count})\n"
             f"⏳ **عمر السيرفر:** {age_str}\n"
             f"🔗 **الرابط:** {invite_link} | 🌐 **Vanity:** {vanity_url}\n"
-            f"💬 **البوستات/الثريّدز:** {total_posts} | 🛡️ **الإداريين الكليين:** {admin_suspects}\n"
+            f"💬 **البوستات/الثريّدز:** {total_posts} | 🛡️️ **الإداريين الكليين:** {admin_suspects}\n"
             f"🚨 **سجل التجسس والعقوبات:**\n"
             f" - آخر باند: `{last_ban}`\n"
             f" - آخر رتبة مضافة: `{last_role_added}`\n"
@@ -267,7 +267,7 @@ class ChannelSelectDropdown(discord.ui.Select):
             return
 
         chunks = []
-        current_chunk = f"📜 **سجل رسائل روم (#{channel.name}) (حسب خطتك):**\n\n"
+        current_chunk = f"📜 **سجل رسائل روم (#{channel.name}):**\n\n"
         
         for line in messages_log:
             if len(current_chunk) + len(line) > 1900:
@@ -299,7 +299,7 @@ class PagedChannelsView(discord.ui.View):
         self.add_item(ChannelSelectDropdown(self.pages[self.current_page_idx]))
         
         if len(self.pages) > 1:
-            prev_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="⬅️️ الصفحة السابقة", disabled=(self.current_page_idx == 0))
+            prev_button = discord.ui.Button(style=discord.ButtonStyle.secondary, label="⬅ الصفحة السابقة", disabled=(self.current_page_idx == 0))
             prev_button.callback = self.prev_page_callback
             self.add_item(prev_button)
 
@@ -356,8 +356,7 @@ class ServerView(discord.ui.View):
 @bot.command(name="سيرفر", aliases=["servers", "سيرفرات"])
 async def list_servers(ctx):
     if ctx.author.id != OWNER_ID:
-        await ctx.send("عذراً، لا أملك الصلاحية لعرض هذه المعلومات، هذه الأوامر خاصة جداً وليست متاحة للعامة.")
-        return  
+        return  # <--- هسة البوت راح يسكت وما يرد بأي كلمة إذا كتبها شخص ثاني بالعام!
 
     if not bot.guilds:
         await ctx.send("عيوني فهد، أنا لست منضماً إلى أي سيرفر حالياً.")
@@ -444,7 +443,7 @@ async def on_message(message):
                 full_chat_history.append({"role": "user", "parts": current_parts})
 
                 chat_session = current_model.start_chat(history=full_chat_history[:-1])
-                response = chat_session.send_message(current_parts)
+                response = chat_session.send_main(current_parts) if hasattr(chat_session, 'send_main') else chat_session.send_message(current_parts)
 
                 if response and hasattr(response, 'text') and response.text:
                     reply_text = response.text.strip()
